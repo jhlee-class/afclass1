@@ -329,6 +329,10 @@ textarea.f-inp{resize:none;line-height:1.6}
 .org-type-btn:active{transform:scale(.95)}
 .org-type-btn.sel{background:var(--pul);border-color:var(--pu);color:var(--pud);font-weight:800}
 
+/* ═══ 강의 주제 태그 ═══ */
+.topic-tag-btn{padding:7px 13px;border-radius:20px;border:1.5px solid var(--border2);background:var(--bg2);color:var(--ink2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.topic-tag-btn.on{border-color:var(--pu);background:var(--pul);color:var(--pud);font-weight:800}
+
 /* ═══ 강의 상세 패널 ═══ */
 .sc-detail-panel{position:fixed;inset:0;background:var(--bg);z-index:160;display:flex;flex-direction:column;max-width:390px;margin:0 auto}
 .sc-detail-panel.hidden{display:none}
@@ -760,7 +764,23 @@ textarea.f-inp{resize:none;line-height:1.6}
 
     <div class="f-section-lbl">기본 정보</div>
     <div class="f-group"><span class="f-lbl">강의 주제</span><input class="f-inp" id="ml-title" placeholder="예: AI 활용 실무"></div>
-    <div class="f-group"><span class="f-lbl">강의 키워드 <span class="f-sub">(QR 페이지에 표시, 쉼표 구분)</span></span><input class="f-inp" id="ml-topics" placeholder="ChatGPT 실무, 프롬프트 작성법, 업무 자동화"></div>
+    <div class="f-group">
+      <span class="f-lbl">대표 강의 분야 <span class="f-sub">(복수 선택 가능)</span></span>
+      <input type="hidden" id="ml-topics">
+      <div id="ml-topics-grid" style="display:flex;flex-wrap:wrap;gap:7px;margin-top:4px">
+        <button type="button" class="topic-tag-btn" data-v="AI·디지털" onclick="toggleTopicTag(this)">🤖 AI·디지털</button>
+        <button type="button" class="topic-tag-btn" data-v="마케팅" onclick="toggleTopicTag(this)">📢 마케팅</button>
+        <button type="button" class="topic-tag-btn" data-v="리더십" onclick="toggleTopicTag(this)">🧭 리더십</button>
+        <button type="button" class="topic-tag-btn" data-v="조직문화" onclick="toggleTopicTag(this)">🏢 조직문화</button>
+        <button type="button" class="topic-tag-btn" data-v="교육·학업" onclick="toggleTopicTag(this)">📚 교육·학업</button>
+        <button type="button" class="topic-tag-btn" data-v="자기계발" onclick="toggleTopicTag(this)">💪 자기계발</button>
+        <button type="button" class="topic-tag-btn" data-v="광고·홍보" onclick="toggleTopicTag(this)">📣 광고·홍보</button>
+        <button type="button" class="topic-tag-btn" data-v="Canva" onclick="toggleTopicTag(this)">🎨 Canva</button>
+        <button type="button" class="topic-tag-btn" data-v="소통·협업" onclick="toggleTopicTag(this)">🤝 소통·협업</button>
+        <button type="button" class="topic-tag-btn" data-v="기타" onclick="toggleTopicTag(this)">📌 기타</button>
+      </div>
+      <input class="f-inp" id="ml-topics-custom" placeholder="직접 입력 (예: 영상편집, 데이터분석)" style="margin-top:8px;font-size:13px">
+    </div>
     <div class="f-group"><span class="f-lbl">강의 커리큘럼</span><textarea class="f-inp" id="ml-curr" rows="3" placeholder="1강: ChatGPT 기초&#10;2강: 프롬프트 설계&#10;3강: 업무 자동화 실습"></textarea></div>
     <div class="f-group"><span class="f-lbl">날짜</span><input class="f-inp" id="ml-date" type="date"></div>
     <div class="f-2col" style="margin-bottom:12px">
@@ -896,7 +916,10 @@ textarea.f-inp{resize:none;line-height:1.6}
       <div style="font-size:15px;font-weight:800;color:var(--pu)" id="proposal-lec-title">강의명</div>
     </div>
 
-    <!-- 날짜 옵션 선택 -->
+    <!-- 비슷한 강의 찾기 -->
+    <div style="font-size:13px;font-weight:800;color:var(--ink);margin-bottom:8px">📌 비슷한 주제 강의 포함</div>
+    <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.6">같은 주제의 다른 강의 후기와 커리큘럼도 함께 보여줄 수 있어요</div>
+    <div id="proposal-related-tags" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px"></div>
     <div style="font-size:13px;font-weight:800;color:var(--ink);margin-bottom:12px">일정 옵션 선택</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
 
@@ -1044,7 +1067,7 @@ async function saveLecture(){
   const d={
     user_id:user.id,
     title:document.getElementById('ml-title').value.trim(),
-    topics:document.getElementById('ml-topics').value.trim(),
+    topics: getSelectedTopics(),
     curriculum:document.getElementById('ml-curr').value.trim(),
     date:document.getElementById('ml-date').value,
     time:document.getElementById('ml-time').value,
@@ -1195,9 +1218,11 @@ function openModal(id,data){
     setEl('m-lec-title',isEdit?'강의 수정':'새 강의 등록');
     document.getElementById('ml-btn').textContent=isEdit?'수정하기':'등록하기';
     document.getElementById('edit-lec-id').value=isEdit?data.id:'';
-    const fields=['title','topics','curr','date','time','org','n','fee','cname','cemail','cphone'];
-    const vals={title:data?.title||'',topics:data?.topics||'',curr:data?.curriculum||'',date:data?.date||'',time:data?.time||'',org:data?.org||'',n:data?.n||'',fee:data?.fee||'',cname:data?.contact_name||'',cemail:data?.contact_email||'',cphone:data?.contact_phone||''};
+    const fields=['title','curr','date','time','org','n','fee','cname','cemail','cphone'];
+    const vals={title:data?.title||'',curr:data?.curriculum||'',date:data?.date||'',time:data?.time||'',org:data?.org||'',n:data?.n||'',fee:data?.fee||'',cname:data?.contact_name||'',cemail:data?.contact_email||'',cphone:data?.contact_phone||''};
     fields.forEach(f=>{const el=document.getElementById('ml-'+f);if(el)el.value=vals[f];});
+    // 태그 복원
+    initTopicTags(data?.topics||'');
   }
 }
 function closeModal(id){
@@ -1816,7 +1841,37 @@ async function uploadProfilePhoto(event){
   }
 }
 
-// ── 강의자료 필터링 ───────────────────────────────────────────────
+// ── 강의 주제 태그 ────────────────────────────────────────────────
+const TOPIC_ICONS={'AI·디지털':'🤖','마케팅':'📢','리더십':'🧭','조직문화':'🏢','교육·학업':'📚','자기계발':'💪','광고·홍보':'📣','Canva':'🎨','소통·협업':'🤝','기타':'📌'};
+
+function toggleTopicTag(btn){
+  btn.classList.toggle('on');
+}
+
+function getSelectedTopics(){
+  const selected=[];
+  document.querySelectorAll('#ml-topics-grid .topic-tag-btn.on').forEach(b=>selected.push(b.dataset.v));
+  const custom=document.getElementById('ml-topics-custom')?.value.trim();
+  if(custom) custom.split(',').forEach(t=>{ if(t.trim()) selected.push(t.trim()); });
+  return selected.join(', ');
+}
+
+function initTopicTags(topicsStr){
+  // 모든 태그 초기화
+  document.querySelectorAll('#ml-topics-grid .topic-tag-btn').forEach(b=>b.classList.remove('on'));
+  const customInp=document.getElementById('ml-topics-custom');
+  if(customInp) customInp.value='';
+  if(!topicsStr) return;
+  const tags=topicsStr.split(',').map(t=>t.trim()).filter(Boolean);
+  const knownTags=Object.keys(TOPIC_ICONS);
+  const customTags=[];
+  tags.forEach(tag=>{
+    const btn=document.querySelector(`#ml-topics-grid .topic-tag-btn[data-v="${tag}"]`);
+    if(btn) btn.classList.add('on');
+    else customTags.push(tag);
+  });
+  if(customInp&&customTags.length) customInp.value=customTags.join(', ');
+}
 function filterMaterials(){
   const lecFilter=document.getElementById('mat-filter-lec')?.value||'';
   const typeFilter=document.getElementById('mat-filter-type')?.value||'';
@@ -2292,13 +2347,29 @@ function openProposalPanel(id){
   const sc = allSc.find(s=>s.id===id);
   if(sc){
     setEl('proposal-lec-title', sc.title||'강의명');
-    // 등록된 날짜/시간이 있으면 미리 채우기
     const dateInp = document.getElementById('prop-date');
     const tsInp = document.getElementById('prop-time-start');
     const teInp = document.getElementById('prop-time-end');
     if(dateInp) dateInp.value = sc.date||'';
     if(tsInp) tsInp.value = sc.time||'';
     if(teInp) teInp.value = sc.end_time||'';
+
+    // 이 강의의 주제 태그 + 같은 주제 강의 수 표시
+    const tagsEl = document.getElementById('proposal-related-tags');
+    if(tagsEl){
+      const thisTags=(sc.topics||'').split(',').map(t=>t.trim()).filter(Boolean);
+      if(thisTags.length){
+        tagsEl.innerHTML = thisTags.map(tag=>{
+          const relCount = allSc.filter(s=>s.id!==id && (s.topics||'').includes(tag)).length;
+          return `<span style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;background:var(--pul);border:1.5px solid var(--pu);font-size:12px;font-weight:700;color:var(--pud)">
+            ${TOPIC_ICONS[tag]||'📌'} ${tag}
+            ${relCount>0?`<span style="background:var(--pu);color:#fff;border-radius:10px;font-size:10px;padding:1px 6px">+${relCount}개</span>`:''}
+          </span>`;
+        }).join('');
+      } else {
+        tagsEl.innerHTML='<div style="font-size:12px;color:var(--ink3)">등록된 주제 태그가 없어요. 강의 수정에서 추가해보세요.</div>';
+      }
+    }
   }
   selProposalOpt('a');
   document.getElementById('m-proposal').classList.remove('hidden');
@@ -2615,7 +2686,10 @@ async function loadProposalPage(scheduleId){
   const total=rvs?.length||0;
   const avg=total?(rvs.reduce((s,r)=>s+(r.rating||0),0)/total).toFixed(1):'0.0';
   const relRvs=(rvs||[]).filter(r=>r.lecture===sc.title).slice(0,3);
-  const topRvs=relRvs.length?relRvs:(rvs||[]).slice(0,3);
+  // 같은 주제 태그의 다른 강의 후기도 포함
+  const scTags=(sc.topics||'').split(',').map(t=>t.trim()).filter(Boolean);
+  const tagRvs=scTags.length?(rvs||[]).filter(r=>r.lecture!==sc.title&&r.rating>=4).slice(0,2):[];
+  const topRvs=relRvs.length?[...relRvs,...tagRvs].slice(0,4):(rvs||[]).slice(0,3);
 
   const snsMap=[
     p.instagram&&`<a href="https://instagram.com/${p.instagram.replace('@','')}" target="_blank" style="padding:7px 14px;border-radius:20px;background:#E1306C;color:#fff;font-size:12px;font-weight:700;text-decoration:none">📸 Instagram</a>`,
