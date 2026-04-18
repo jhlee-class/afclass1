@@ -999,6 +999,55 @@ textarea.f-inp{resize:none;line-height:1.6}
   </div>
 </div>
 
+<!-- 다중 일정 미리보기 패널 -->
+<div id="m-schedule-preview" class="mat-panel-bg hidden" onclick="closeModal('m-schedule-preview')">
+  <div class="mat-panel" onclick="event.stopPropagation()" style="max-height:92vh">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:var(--ink)">📋 분석 결과 확인</div>
+        <div style="font-size:12px;color:var(--ink3);margin-top:3px">수정하거나 체크한 일정만 저장돼요</div>
+      </div>
+      <button onclick="closeModal('m-schedule-preview')" style="width:36px;height:36px;border-radius:10px;background:var(--bg2);border:none;font-size:18px;cursor:pointer;font-family:inherit">✕</button>
+    </div>
+
+    <!-- 공통 정보 -->
+    <div style="background:var(--pul);border-radius:14px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:800;color:var(--pud);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">공통 정보</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><div class="f-lbl" style="font-size:10px">기관</div><input id="sp-org" class="f-inp" style="background:#fff;font-size:13px;padding:9px"></div>
+        <div><div class="f-lbl" style="font-size:10px">장소</div><input id="sp-loc" class="f-inp" style="background:#fff;font-size:13px;padding:9px"></div>
+        <div><div class="f-lbl" style="font-size:10px">강의명</div><input id="sp-title" class="f-inp" style="background:#fff;font-size:13px;padding:9px"></div>
+        <div><div class="f-lbl" style="font-size:10px">인원</div><input id="sp-n" class="f-inp" type="number" style="background:#fff;font-size:13px;padding:9px"></div>
+        <div><div class="f-lbl" style="font-size:10px">강의료 (원)</div><input id="sp-fee" class="f-inp" type="number" style="background:#fff;font-size:13px;padding:9px"></div>
+        <div><div class="f-lbl" style="font-size:10px">담당자</div><input id="sp-cname" class="f-inp" style="background:#fff;font-size:13px;padding:9px"></div>
+        <div><div class="f-lbl" style="font-size:10px">담당자 이메일</div><input id="sp-cemail" class="f-inp" style="background:#fff;font-size:13px;padding:9px"></div>
+        <div><div class="f-lbl" style="font-size:10px">담당자 전화</div><input id="sp-cphone" class="f-inp" style="background:#fff;font-size:13px;padding:9px"></div>
+      </div>
+    </div>
+
+    <!-- 일정 목록 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:800;color:var(--ink)">📅 일정 <span id="sp-count" style="color:var(--pu)">0</span>개</div>
+      <div style="font-size:11px;color:var(--ink3)">체크한 일정만 저장돼요</div>
+    </div>
+    <div id="sp-dates-list" style="max-height:240px;overflow-y:auto;margin-bottom:10px"></div>
+
+    <!-- 일정 미정 옵션 -->
+    <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--aml);margin-bottom:16px;cursor:pointer">
+      <input type="checkbox" id="sp-tentative" style="width:18px;height:18px;accent-color:var(--ac);cursor:pointer">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800;color:#854F0B">📝 일정 미정 (협의 필요)</div>
+        <div style="font-size:11px;color:#854F0B;opacity:.8">체크하면 날짜 없는 일정 1개를 생성해요</div>
+      </div>
+    </label>
+
+    <div style="display:flex;gap:10px">
+      <button onclick="closeModal('m-schedule-preview')" class="m-cancel" style="flex:1">취소</button>
+      <button onclick="savePreviewSchedules()" id="sp-save-btn" class="m-confirm" style="flex:2">✓ 선택한 일정 저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast-el"></div>
 
 <script>
@@ -1914,22 +1963,29 @@ async function parseEmailToSchedule(){
 
 형식:
 {
-  "title": "강의명 (예: AI 활용 실무)",
-  "date": "YYYY-MM-DD 형식 날짜 (없으면 빈 문자열)",
-  "time": "HH:MM 형식 시작 시간 (없으면 빈 문자열)",
-  "end_time": "HH:MM 형식 종료 시간 (없으면 빈 문자열)",
+  "title": "강의명 (여러 강의면 공통 주제나 대표 강의명)",
   "org": "기관/회사명",
   "location": "강의 장소 (없으면 빈 문자열)",
   "n": 인원수_숫자 (없으면 0),
   "fee": 강의료_원단위_숫자 (없으면 0),
-  "topics": "대표 주제들 쉼표로 (AI·디지털/마케팅/리더십/조직문화/교육·학업/자기계발/광고·홍보/Canva/소통·협업 중에서 해당되는 것)",
-  "curriculum": "커리큘럼이 언급되어 있으면 그 내용, 없으면 빈 문자열",
+  "topics": "대표 주제들 쉼표로 (AI·디지털/마케팅/리더십/조직문화/교육·학업/자기계발/광고·홍보/Canva/소통·협업 중 해당)",
+  "curriculum": "커리큘럼 내용 (없으면 빈 문자열)",
   "contact_name": "담당자 이름",
   "contact_email": "담당자 이메일",
-  "contact_phone": "담당자 전화번호"
+  "contact_phone": "담당자 전화번호",
+  "dates": [
+    {"date":"YYYY-MM-DD","time":"HH:MM","end_time":"HH:MM","note":"이 일정에 대한 간단 설명(없으면 빈 문자열)"}
+  ],
+  "tentative": 일정_미정_여부_boolean
 }
 
-오늘 날짜는 ${new Date().toISOString().slice(0,10)}이야. 내년이라고 언급 없으면 올해 또는 가장 가까운 미래 날짜로 해석해.
+규칙:
+- 여러 날짜·시간이 제시되었으면 dates 배열에 모두 추출 (각각 별도 항목으로)
+- "A 또는 B" 같이 선택 가능한 날짜도 모두 개별 항목으로 추출
+- 날짜 범위(예: 5/26~5/29)는 개별 날짜로 분리
+- 시간이 "14:00~16:00 or 15:00~17:00" 이런 식이면 첫 번째만 선택
+- 일정이 없거나 "협의 필요" "아직 미정" 같은 내용이면 tentative:true, dates:[]
+- 오늘 날짜 ${new Date().toISOString().slice(0,10)} 기준으로 가까운 미래 해석
 
 이메일:
 ${text}`;
@@ -1938,45 +1994,129 @@ ${text}`;
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:prompt}]})
     });
     const data=await resp.json();
     const raw=data.content?.[0]?.text||'';
-    // JSON만 추출
     const jsonMatch=raw.match(/\{[\s\S]*\}/);
     if(!jsonMatch) throw new Error('AI 응답에서 정보를 찾지 못했어요');
     const parsed=JSON.parse(jsonMatch[0]);
 
-    // 선택 패널 닫고 강의 모달 열기 + 폼 채우기
+    // 파싱 결과를 전역에 저장
+    window._parsedEmail=parsed;
+
+    // 입력 패널 닫고
     document.getElementById('m-schedule-entry').classList.add('hidden');
     document.getElementById('m-schedule-entry').style.display='none';
-    openModal('m-lec', null);
 
-    // 잠시 대기 후 폼 채우기 (모달 DOM 완전히 렌더 후)
-    setTimeout(()=>{
-      const fill=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null&&val!=='')el.value=val;};
-      fill('ml-title',parsed.title);
-      fill('ml-date',parsed.date);
-      fill('ml-time',parsed.time);
-      fill('ml-etime',parsed.end_time);
-      fill('ml-org',parsed.org);
-      fill('ml-loc',parsed.location);
-      fill('ml-n',parsed.n||'');
-      fill('ml-fee',parsed.fee||'');
-      fill('ml-curr',parsed.curriculum);
-      fill('ml-cname',parsed.contact_name);
-      fill('ml-cemail',parsed.contact_email);
-      fill('ml-cphone',parsed.contact_phone);
-      // 주제 태그 복원
-      initTopicTags(parsed.topics||'');
-      toast('✨ AI가 입력을 완료했어요! 확인 후 저장하세요');
-    },200);
+    // 미리보기 패널 열기
+    showSchedulePreview(parsed);
   }catch(e){
     console.error('parseEmail error:',e);
     toast('AI 분석 실패: '+(e.message||'다시 시도해주세요'));
   }
   btn.disabled=false; btn.textContent='🤖 AI로 자동 입력';
   if(prog) prog.style.display='none';
+}
+
+function showSchedulePreview(p){
+  // 공통 정보 채우기
+  const fill=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
+  fill('sp-title',p.title);
+  fill('sp-org',p.org);
+  fill('sp-loc',p.location);
+  fill('sp-n',p.n||'');
+  fill('sp-fee',p.fee||'');
+  fill('sp-cname',p.contact_name);
+  fill('sp-cemail',p.contact_email);
+  fill('sp-cphone',p.contact_phone);
+
+  // 일정 목록 렌더링
+  const list=document.getElementById('sp-dates-list');
+  const dates=p.dates||[];
+  document.getElementById('sp-count').textContent=dates.length;
+
+  if(dates.length){
+    list.innerHTML=dates.map((d,i)=>{
+      const dateObj=d.date?new Date(d.date):null;
+      const dayNames=['일','월','화','수','목','금','토'];
+      const dayStr=dateObj?`${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${dayNames[dateObj.getDay()]})`:'날짜 없음';
+      return `<label style="display:flex;gap:10px;padding:12px;border:1.5px solid var(--border2);border-radius:12px;margin-bottom:8px;cursor:pointer;background:#fff;align-items:flex-start" class="sp-date-row">
+        <input type="checkbox" class="sp-date-check" data-idx="${i}" checked style="width:18px;height:18px;accent-color:var(--pu);cursor:pointer;margin-top:2px">
+        <div style="flex:1;min-width:0">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:${d.note?'6px':'0'}">
+            <input type="date" class="f-inp sp-d-date" data-idx="${i}" value="${d.date||''}" style="font-size:12px;padding:7px;background:var(--bg2)">
+            <input type="time" class="f-inp sp-d-ts" data-idx="${i}" value="${d.time||''}" step="1800" style="font-size:12px;padding:7px;background:var(--bg2)">
+            <input type="time" class="f-inp sp-d-te" data-idx="${i}" value="${d.end_time||''}" step="1800" style="font-size:12px;padding:7px;background:var(--bg2)">
+          </div>
+          <div style="font-size:11px;color:var(--ink2);font-weight:600">${dayStr}${d.note?' · '+d.note:''}</div>
+        </div>
+      </label>`;
+    }).join('');
+  } else {
+    list.innerHTML='<div style="padding:20px;background:var(--bg2);border-radius:12px;text-align:center;color:var(--ink3);font-size:13px">📭 추출된 일정이 없어요<br><span style="font-size:11px">아래 "일정 미정" 옵션을 체크해 저장하세요</span></div>';
+  }
+
+  // 일정 미정 기본값
+  const tentative=document.getElementById('sp-tentative');
+  if(tentative) tentative.checked=p.tentative&&!dates.length;
+
+  // 패널 열기
+  const panel=document.getElementById('m-schedule-preview');
+  panel.classList.remove('hidden');
+  panel.style.display='';
+}
+
+async function savePreviewSchedules(){
+  const p=window._parsedEmail||{};
+  const common={
+    title: document.getElementById('sp-title').value.trim(),
+    org: document.getElementById('sp-org').value.trim(),
+    location: document.getElementById('sp-loc').value.trim(),
+    n: parseInt(document.getElementById('sp-n').value)||0,
+    fee: parseInt(document.getElementById('sp-fee').value)||0,
+    topics: p.topics||'',
+    curriculum: p.curriculum||'',
+    contact_name: document.getElementById('sp-cname').value.trim(),
+    contact_email: document.getElementById('sp-cemail').value.trim(),
+    contact_phone: document.getElementById('sp-cphone').value.trim(),
+    status: '예정'
+  };
+  if(!common.title){toast('강의명을 입력해주세요');return;}
+
+  // 체크된 일정 수집
+  const checks=document.querySelectorAll('.sp-date-check:checked');
+  const tentative=document.getElementById('sp-tentative').checked;
+  if(!checks.length&&!tentative){toast('저장할 일정을 하나 이상 체크해주세요');return;}
+
+  const btn=document.getElementById('sp-save-btn');
+  btn.disabled=true;btn.textContent='저장 중...';
+
+  try{
+    const rows=[];
+    checks.forEach(c=>{
+      const idx=c.dataset.idx;
+      const dEl=document.querySelector(`.sp-d-date[data-idx="${idx}"]`);
+      const tsEl=document.querySelector(`.sp-d-ts[data-idx="${idx}"]`);
+      const teEl=document.querySelector(`.sp-d-te[data-idx="${idx}"]`);
+      rows.push({...common, date:dEl.value, time:tsEl.value, end_time:teEl.value});
+    });
+    if(tentative){
+      rows.push({...common, date:'', time:'', end_time:''});
+    }
+    // 사용자 ID 추가
+    const{data:{user}}=await db.auth.getUser();
+    rows.forEach(r=>{r.user_id=user?.id||null;});
+    const{error}=await db.from('schedules').insert(rows);
+    if(error) throw error;
+    closeModal('m-schedule-preview');
+    toast(`✅ ${rows.length}개 일정이 저장됐어요`);
+    await switchTab('schedule',null);
+  }catch(e){
+    console.error(e);
+    toast('저장 실패: '+(e.message||''));
+  }
+  btn.disabled=false;btn.textContent='✓ 선택한 일정 저장';
 }
 const TOPIC_ICONS={'AI·디지털':'🤖','마케팅':'📢','리더십':'🧭','조직문화':'🏢','교육·학업':'📚','자기계발':'💪','광고·홍보':'📣','Canva':'🎨','소통·협업':'🤝','기타':'📌'};
 
