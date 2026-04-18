@@ -1300,40 +1300,6 @@ async function switchTab(tab,btn){
     const starDist=[5,4,3,2,1].map(s=>({s,cnt:vis.filter(r=>r.rating===s).length}));
     const maxStar=Math.max(...starDist.map(d=>d.cnt),1);
 
-    // 소속 유형 — 도넛용 데이터
-    const orgColors={'기업':'#6C5CE7','공공기관':'#00B894','대학·교육기관':'#F39C12','병원·의료기관':'#E74C3C','협회·단체':'#0984E3','초중고':'#E91E8C','기타':'#B2BEC3'};
-    const orgNew=['기업','공공기관','대학·교육기관','협회·단체','초중고','기타'];
-    const orgDist={};
-    orgNew.forEach(t=>{orgDist[t]=0;});
-    vis.forEach(r=>{const t=r.org_type||'기업';orgDist[t]=(orgDist[t]||0)+1;});
-
-    // 도넛 SVG 생성
-    function donutSVG(data,colors,size=120){
-      const r=45,cx=60,cy=60,stroke=18;
-      const tot=data.reduce((s,d)=>s+d.cnt,0)||1;
-      let offset=0;
-      const circ=2*Math.PI*r;
-      let segs='';
-      data.forEach(d=>{
-        if(!d.cnt)return;
-        const pct=d.cnt/tot;
-        const dash=pct*circ;
-        const gap=circ-dash;
-        segs+=`<circle r="${r}" cx="${cx}" cy="${cy}" fill="none" stroke="${colors[d.label]||'#ccc'}" stroke-width="${stroke}" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(-offset*circ).toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>`;
-        offset+=pct;
-      });
-      return `<svg width="${size}" height="${size}" viewBox="0 0 120 120">${segs}<text x="60" y="55" text-anchor="middle" font-size="18" font-weight="800" fill="var(--ink)">${tot}</text><text x="60" y="72" text-anchor="middle" font-size="10" fill="var(--ink3)">전체</text></svg>`;
-    }
-
-    const orgData=orgNew.map(t=>({label:t,cnt:orgDist[t]||0}));
-    const donut=donutSVG(orgData,orgColors);
-
-    // 시간대
-    const timeDist={오전:0,오후:0,저녁:0,야간:0};
-    vis.forEach(r=>{if(!r.created_at)return;const h=new Date(r.created_at).getHours();if(h>=6&&h<12)timeDist.오전++;else if(h>=12&&h<17)timeDist.오후++;else if(h>=17&&h<21)timeDist.저녁++;else timeDist.야간++;});
-    const maxTime=Math.max(...Object.values(timeDist),1);
-    const timeIcons={오전:'🌅',오후:'☀️',저녁:'🌆',야간:'🌙'};
-
     // 월별
     const monthMap={};
     sc.forEach(s=>{if(!s.date)return;const mm=s.date.slice(0,7);monthMap[mm]=(monthMap[mm]||0)+1;});
@@ -1385,39 +1351,33 @@ async function switchTab(tab,btn){
     });
     html+='</div></div>';
 
-    // ③ 소속 유형 — 도넛 + 범례
-    html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div class="card-t">🏢 소속 유형</div></div><div class="card-bd">
-      <div style="display:flex;gap:16px;align-items:center">
-        <div style="flex-shrink:0">${donut}</div>
-        <div style="flex:1">
-          ${orgData.filter(d=>d.cnt>0).map(d=>`
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
-              <div style="width:10px;height:10px;border-radius:50%;background:${orgColors[d.label]||'#ccc'};flex-shrink:0"></div>
-              <span style="font-size:12px;color:var(--ink2);flex:1">${d.label}</span>
-              <span style="font-size:12px;font-weight:700;color:var(--ink)">${d.cnt}명</span>
-            </div>`).join('')}
-          ${orgData.every(d=>!d.cnt)?'<div style="font-size:13px;color:var(--ink3)">데이터 없음</div>':''}
+    // ③ AI 후기 분석
+    html+=`<div class="card" style="margin-bottom:12px">
+      <div class="card-hd">
+        <div class="card-t">🤖 후기 분석</div>
+        <button onclick="genStatsInsight()" id="stats-insight-btn" style="font-size:11px;padding:5px 12px;border-radius:20px;border:none;background:var(--ink);color:#fff;font-weight:700;cursor:pointer;font-family:inherit">AI 분석</button>
+      </div>
+      <div class="card-bd" id="stats-insight-box">
+        <div style="text-align:center;padding:12px 0;color:var(--ink3)">
+          <div style="font-size:28px;margin-bottom:8px">🤖</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">전체 후기 AI 분석</div>
+          <div style="font-size:12px;line-height:1.7">수강생 후기를 분석해 주요 키워드와<br>개선 방안을 자동으로 정리해드려요</div>
         </div>
       </div>
-    </div></div>`;
+    </div>`;
 
-    // ④ 시간대 — 세로 바 4칸
-    html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div class="card-t">🕐 후기 작성 시간대</div></div><div class="card-bd">
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
-        ${Object.entries(timeDist).map(([k,v])=>{
-          const h=Math.round(v/maxTime*72);
-          const pct=vis.length?Math.round(v/vis.length*100):0;
-          return `<div>
-            <div style="font-size:18px;margin-bottom:4px">${timeIcons[k]}</div>
-            <div style="height:72px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px">
-              <div style="width:28px;height:${Math.max(h,2)}px;background:linear-gradient(180deg,var(--pu),var(--pud));border-radius:4px 4px 0 0"></div>
-            </div>
-            <div style="font-size:12px;font-weight:800;color:var(--ink)">${v}명</div>
-            <div style="font-size:10px;color:var(--ink3)">${k} (${pct}%)</div>
-          </div>`;
-        }).join('')}
+    // ④ 주요 키워드 (수동 입력)
+    const savedNote=profile.stats_note||'';
+    html+=`<div class="card" style="margin-bottom:12px">
+      <div class="card-hd"><div class="card-t">📝 강의 분석 노트</div></div>
+      <div class="card-bd">
+        <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.6">AI 분석 결과나 직접 분석한 내용을 기록해두세요. 다음 강의 준비에 활용할 수 있어요.</div>
+        <textarea id="stats-note-inp" style="width:100%;min-height:120px;background:var(--bg2);border:1.5px solid transparent;border-radius:12px;padding:14px;font-size:14px;color:var(--ink);outline:none;font-family:inherit;resize:vertical;line-height:1.7;transition:border-color .15s" onfocus="this.style.borderColor='var(--ink)';this.style.background='#fff'" onblur="this.style.borderColor='transparent';this.style.background='var(--bg2)'" placeholder="예) 실무 예시 더 필요, Q&A 시간 부족, ChatGPT 파트 호평 다수...">${savedNote}</textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button onclick="saveStatsNote()" style="padding:10px 20px;border-radius:10px;background:var(--ink);border:none;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">저장</button>
+        </div>
       </div>
-    </div></div>`;
+    </div>`;
 
     // ⑤ 월별 강의 추이
     html+='<div class="card" style="margin-bottom:12px"><div class="card-hd"><div class="card-t">📅 월별 강의</div></div><div class="card-bd">';
@@ -1727,7 +1687,53 @@ async function genAISummary(){
   btn.textContent='다시 생성';btn.disabled=false;
 }
 
-// ── 프로필 사진 업로드 ────────────────────────────────────────────
+// ── 통계 탭 AI 분석 + 노트 저장 ─────────────────────────────────
+async function genStatsInsight(){
+  const btn=document.getElementById('stats-insight-btn');
+  const box=document.getElementById('stats-insight-box');
+  if(!btn||!box)return;
+  if(!allRv.length){toast('후기가 없어요');return;}
+  btn.textContent='분석 중...';btn.disabled=true;
+  box.innerHTML='<div style="text-align:center;padding:16px;color:var(--ink3);font-size:13px">🤖 분석 중이에요...</div>';
+  const vis=allRv.filter(r=>!r.hidden);
+  const lines=vis.map((r,i)=>`[${i+1}] 별점:${r.rating}점 좋았던점:${r.good||'-'} 아쉬운점:${r.bad||'-'} 더배울것:${r.more||'-'}`);
+  const prompt=`다음은 강의 수강생 후기 ${vis.length}개입니다.\n${lines.join('\n')}\n\n이 후기들을 분석해서 아래 형식으로 한국어로 정리해주세요:\n**주요 키워드** (3~5개, 쉼표로 구분)\n**잘한 점** (2~3가지 불릿)\n**개선 포인트** (1~2가지 불릿)\n**다음 강의 제안** (한 문장)\n\n간결하고 실용적으로 작성해주세요.`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await resp.json();
+    const text=data.content&&data.content[0]?data.content[0].text:'분석 실패';
+    box.innerHTML='<div style="font-size:13px;color:var(--ink);line-height:1.8;white-space:pre-line">'+
+      text.replace(/\*\*([^*]+)\*\*/g,'<strong style="color:var(--pu)">$1</strong>')+
+      '</div><div style="display:flex;justify-content:flex-end;margin-top:10px"><button onclick="copyStatsInsight()" style="font-size:12px;padding:7px 14px;border-radius:8px;background:var(--bg2);border:none;cursor:pointer;font-weight:700;font-family:inherit">📋 노트에 복사</button></div>';
+  }catch(e){
+    box.innerHTML='<div style="color:var(--rd);font-size:13px;padding:8px">분석 실패: '+e.message+'</div>';
+  }
+  btn.textContent='AI 분석';btn.disabled=false;
+}
+
+function copyStatsInsight(){
+  const box=document.getElementById('stats-insight-box');
+  const inp=document.getElementById('stats-note-inp');
+  if(!box||!inp)return;
+  const text=box.innerText||box.textContent||'';
+  inp.value=(inp.value?inp.value+'\n\n---\n':'')+'[AI 분석 결과]\n'+text.replace('📋 노트에 복사','').trim();
+  toast('노트에 복사됐어요 ✅');
+}
+
+async function saveStatsNote(){
+  const note=document.getElementById('stats-note-inp')?.value||'';
+  try{
+    profile.stats_note=note;
+    await saveProfile();
+    toast('노트가 저장됐어요 ✅');
+  }catch(e){
+    toast('저장 실패: '+(e.message||''));
+  }
+}
 async function uploadProfilePhoto(event){
   const file=event.target.files[0];
   if(!file)return;
@@ -2195,6 +2201,7 @@ function renderSchedules(sc, query){
       <div class="lc-actions" onclick="event.stopPropagation()">
         <button class="lc-btn lc-btn-pu" onclick="openQRFor('${s.id}')">🔲 QR</button>
         ${isUp?`<button class="lc-btn lc-btn-gr" onclick="completeLecture('${s.id}')">✓ 완료</button>`:''}
+        <button class="lc-btn" style="background:var(--pul);color:var(--pud)" onclick="copyProposalLink('${s.id}')">📄 제안서</button>
         <button class="lc-btn lc-btn-rd" onclick="confirmDelete('${s.id}')">🗑️</button>
       </div>
     </div>`;
@@ -2216,6 +2223,13 @@ async function completeLecture(id){
   }catch(e){
     toast('오류: ' + (e.message||'다시 시도해주세요'));
   }
+}
+
+function copyProposalLink(id){
+  const url=BASE_URL+'?proposal='+id;
+  navigator.clipboard.writeText(url).then(()=>{
+    toast('제안서 링크가 복사됐어요 📋 담당자에게 바로 붙여넣으세요!');
+  }).catch(()=>toast('링크: '+url));
 }
 
 async function openQRFor(lectureId){
@@ -2378,9 +2392,215 @@ function authErrMsg(e){
   return m||'오류가 발생했어요. 다시 시도해주세요';
 }
 
-// ── INIT ──
+// ── 공개 프로필 페이지 ────────────────────────────────────────────
+async function loadPublicProfile(slug){
+  goView('v-public');
+  const{data:profiles}=await db.from('profiles').select('*').eq('slug',slug).limit(1);
+  const p=profiles?.[0];
+  if(!p||!p.is_public){
+    document.getElementById('pub-scroll').innerHTML='<div style="text-align:center;padding:80px 20px"><div style="font-size:40px;margin-bottom:16px">🔒</div><div style="font-size:18px;font-weight:800;color:var(--ink)">비공개 프로필이에요</div></div>';
+    return;
+  }
+  const name=p.name||'강사';
+  // 헤더
+  const av=document.getElementById('pub-av');
+  if(av)av.innerHTML=p.photo_url?`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">`:`<span>${name[0]}</span>`;
+  setEl('pub-name',name+' 강사');
+  setEl('pub-tagline',p.tagline||p.org||'');
+  // 통계
+  const{data:rvs}=await db.from('reviews').select('rating').eq('hidden',false);
+  const{data:scs}=await db.from('schedules').select('id');
+  const total=rvs?.length||0;
+  const avg=total?(rvs.reduce((s,r)=>s+(r.rating||0),0)/total).toFixed(1):'0.0';
+  const statsEl=document.getElementById('pub-stats');
+  if(statsEl)statsEl.innerHTML=`
+    <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#fff">${total}</div><div style="font-size:11px;color:rgba(255,255,255,.7)">후기</div></div>
+    <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#fff">${avg}★</div><div style="font-size:11px;color:rgba(255,255,255,.7)">평균 별점</div></div>
+    <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#fff">${scs?.length||0}</div><div style="font-size:11px;color:rgba(255,255,255,.7)">강의</div></div>`;
+  // 바이오
+  const bioEl=document.getElementById('pub-bio');
+  if(bioEl)bioEl.textContent=p.bio||'';
+  // SNS
+  const snsEl=document.getElementById('pub-sns');
+  const snsMap=[
+    {k:'instagram',label:'📸 Instagram',url:`https://instagram.com/${(p.instagram||'').replace('@','')}`},
+    {k:'youtube',label:'▶ YouTube',url:`https://youtube.com/@${p.youtube}`},
+    {k:'kakao',label:'💬 KakaoTalk',url:`https://pf.kakao.com/_${p.kakao}`},
+    {k:'linkedin',label:'💼 LinkedIn',url:p.linkedin},
+  ];
+  if(snsEl)snsEl.innerHTML=snsMap.filter(s=>p[s.k]).map(s=>`<a href="${s.url}" target="_blank" style="padding:8px 14px;border-radius:20px;background:var(--bg2);color:var(--ink);font-size:12px;font-weight:700;text-decoration:none">${s.label}</a>`).join('');
+  // 이력
+  const careerEl=document.getElementById('pub-career-section');
+  if(careerEl&&(p.career||p.education||p.awards)){
+    careerEl.innerHTML=`<div class="card"><div class="card-hd"><div class="card-t">📋 강사 이력</div></div><div class="card-bd">
+      ${p.career?`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">경력</div><div style="font-size:13px;color:var(--ink2);line-height:1.8;white-space:pre-line">${p.career}</div></div>`:''}
+      ${p.education?`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">학력</div><div style="font-size:13px;color:var(--ink2);line-height:1.8">${p.education}</div></div>`:''}
+      ${p.awards?`<div><div style="font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">수상·자격</div><div style="font-size:13px;color:var(--ink2);line-height:1.8">${p.awards}</div></div>`:''}
+    </div></div>`;
+  }
+  // 대표 후기 3개
+  const{data:topRvs}=await db.from('reviews').select('*').eq('hidden',false).order('rating',{ascending:false}).limit(3);
+  const rvEl=document.getElementById('pub-reviews-section');
+  if(rvEl&&topRvs?.length){
+    rvEl.innerHTML=`<div class="card"><div class="card-hd"><div class="card-t">💬 수강생 후기</div></div><div class="card-bd">${topRvs.map(r=>`
+      <div style="padding:14px;background:var(--bg2);border-radius:12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <div><span style="font-size:13px;font-weight:700;color:var(--ink)">${r.name||'익명'}</span><span style="font-size:11px;color:var(--ink3);margin-left:8px">${r.org||''}</span></div>
+          <span style="color:var(--am);font-size:13px">${'★'.repeat(r.rating||5)}</span>
+        </div>
+        <div style="font-size:13px;color:var(--ink2);line-height:1.6">${r.good||''}</div>
+      </div>`).join('')}</div></div>`;
+  }
+  // 강의 이력
+  const{data:lecList}=await db.from('schedules').select('id,title,date,org,status').order('date',{ascending:false}).limit(5);
+  const lecEl=document.getElementById('pub-lectures-section');
+  if(lecEl&&lecList?.length){
+    lecEl.innerHTML=`<div class="card"><div class="card-hd"><div class="card-t">📅 강의 이력</div></div><div class="card-bd">${lecList.map(s=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:.5px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--ink)">${s.title}</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:2px">${s.org||''} · ${s.date||''}</div>
+        </div>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${s.status==='완료'?'var(--grl)':'var(--pul)'};color:${s.status==='완료'?'var(--gr)':'var(--pud)'}">${s.status||''}</span>
+      </div>`).join('')}</div></div>`;
+  }
+  // 제안서 요청 버튼
+  const footer=document.querySelector('#pub-scroll > div:last-child');
+  if(footer&&lecList?.length){
+    const propLinks=lecList.slice(0,3).map(s=>`<a href="?proposal=${s.id}" style="display:block;padding:12px 16px;background:var(--white);border-radius:12px;border:.5px solid var(--border);margin-bottom:8px;text-decoration:none;color:var(--ink)"><span style="font-size:14px;font-weight:700">📄 ${s.title} 제안서 보기</span><span style="font-size:11px;color:var(--ink3);display:block;margin-top:2px">${s.org||''} · ${s.date||''}</span></a>`).join('');
+    footer.insertAdjacentHTML('beforebegin',`<div style="margin:0 16px 14px"><div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:12px">📋 강의 제안서</div>${propLinks}</div>`);
+  }
+}
+
+// ── 강의 제안 페이지 (?proposal=강의ID) ──────────────────────────
+async function loadProposalPage(scheduleId){
+  // 뷰를 공개 프로필용으로 재활용
+  goView('v-public');
+  const scroll=document.getElementById('pub-scroll');
+  scroll.innerHTML='<div class="loading-wrap"><div class="spin"></div>제안서 불러오는 중...</div>';
+
+  // 데이터 병렬 로드
+  const[{data:scs},{data:profiles},{data:rvs}]=await Promise.all([
+    db.from('schedules').select('*').eq('id',scheduleId).limit(1),
+    db.from('profiles').select('*').limit(1),
+    db.from('reviews').select('*').eq('hidden',false).order('rating',{ascending:false}),
+  ]);
+  const sc=scs?.[0];
+  const p=profiles?.[0]||{};
+  if(!sc){scroll.innerHTML='<div style="text-align:center;padding:80px 20px"><div style="font-size:40px">📭</div><div style="font-size:18px;font-weight:800;color:var(--ink);margin-top:16px">강의를 찾을 수 없어요</div></div>';return;}
+
+  const name=p.name||'강사';
+  const total=rvs?.length||0;
+  const avg=total?(rvs.reduce((s,r)=>s+(r.rating||0),0)/total).toFixed(1):'0.0';
+  // 관련 후기 (같은 강의명 또는 유사 키워드)
+  const relRvs=(rvs||[]).filter(r=>r.lecture===sc.title).slice(0,3);
+  const topRvs=relRvs.length?relRvs:(rvs||[]).slice(0,3);
+  // 강의자료 (첨부 사진 등)
+  const{data:mats}=await db.from('materials').select('*').eq('lecture_title',sc.title);
+
+  const snsMap=[
+    p.instagram&&`<a href="https://instagram.com/${p.instagram.replace('@','')}" target="_blank" style="padding:7px 14px;border-radius:20px;background:#E1306C;color:#fff;font-size:12px;font-weight:700;text-decoration:none">📸 Instagram</a>`,
+    p.youtube&&`<a href="https://youtube.com/@${p.youtube}" target="_blank" style="padding:7px 14px;border-radius:20px;background:#FF0000;color:#fff;font-size:12px;font-weight:700;text-decoration:none">▶ YouTube</a>`,
+    p.kakao&&`<a href="https://pf.kakao.com/_${p.kakao}" target="_blank" style="padding:7px 14px;border-radius:20px;background:#FEE500;color:#3C1E1E;font-size:12px;font-weight:700;text-decoration:none">💬 KakaoTalk</a>`,
+  ].filter(Boolean).join('');
+
+  scroll.innerHTML=`
+    <!-- ① 헤더 -->
+    <div style="background:linear-gradient(135deg,var(--pu),var(--pud));padding:44px 20px 32px;text-align:center">
+      ${p.photo_url?`<img src="${p.photo_url}" style="width:72px;height:72px;border-radius:22px;object-fit:cover;margin:0 auto 14px;display:block;border:3px solid rgba(255,255,255,.3)">`:`<div style="width:72px;height:72px;border-radius:22px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;margin:0 auto 14px">${name[0]}</div>`}
+      <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:6px;font-weight:600">강의 제안서</div>
+      <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px;margin-bottom:4px">${name} 강사</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.75)">${p.tagline||p.org||''}</div>
+      <div style="display:flex;justify-content:center;gap:20px;margin-top:16px">
+        <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#fff">${total}</div><div style="font-size:11px;color:rgba(255,255,255,.7)">누적 후기</div></div>
+        <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#fff">${avg}★</div><div style="font-size:11px;color:rgba(255,255,255,.7)">평균 별점</div></div>
+      </div>
+    </div>
+
+    <div style="padding:0 16px;margin-top:-20px">
+
+      <!-- ② 강의 제목 및 커리큘럼 -->
+      <div class="card" style="margin-bottom:14px;position:relative;z-index:1">
+        <div class="card-hd"><div class="card-t">📚 강의 제목 및 커리큘럼</div></div>
+        <div class="card-bd">
+          <div style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:8px">${sc.title}</div>
+          ${sc.topics?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${sc.topics.split(',').filter(t=>t.trim()).map(t=>`<span style="background:var(--pul);color:var(--pud);font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px">${t.trim()}</span>`).join('')}</div>`:''}
+          ${sc.curriculum?`<div style="background:var(--bg2);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:800;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">커리큘럼</div><div style="font-size:13px;color:var(--ink2);line-height:1.9;white-space:pre-line">${sc.curriculum}</div></div>`:'<div style="font-size:13px;color:var(--ink3)">커리큘럼은 요청에 맞게 맞춤 구성됩니다.</div>'}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+            ${sc.n?`<div style="background:var(--bg2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:4px">예상 인원</div><div style="font-size:16px;font-weight:800;color:var(--ink)">${sc.n}명</div></div>`:''}
+            ${sc.time?`<div style="background:var(--bg2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:4px">강의 시간</div><div style="font-size:16px;font-weight:800;color:var(--ink)">${sc.time}${sc.end_time?' ~ '+sc.end_time:''}</div></div>`:''}
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ 이전 비슷한 강의 후기 및 평점 -->
+      ${topRvs.length?`<div class="card" style="margin-bottom:14px">
+        <div class="card-hd">
+          <div class="card-t">💬 수강생 후기 및 평점</div>
+          <div style="font-size:14px;font-weight:800;color:var(--am)">${avg}★</div>
+        </div>
+        <div class="card-bd">
+          ${topRvs.map(r=>`<div style="padding:14px;background:var(--bg2);border-radius:12px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div>
+                <span style="font-size:13px;font-weight:700;color:var(--ink)">${r.name||'익명'}</span>
+                ${r.org?`<span style="font-size:11px;color:var(--ink3);margin-left:8px">${r.org}</span>`:''}
+                ${r.lecture?`<div style="font-size:11px;color:var(--pu);font-weight:600;margin-top:2px">📌 ${r.lecture}</div>`:''}
+              </div>
+              <span style="color:var(--am);font-size:13px">${'★'.repeat(r.rating||5)}</span>
+            </div>
+            ${r.good?`<div style="font-size:13px;color:var(--ink2);line-height:1.6">"${r.good}"</div>`:''}
+          </div>`).join('')}
+        </div>
+      </div>`:''}
+
+      <!-- ④ 강의료 -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-t">💰 강의료</div></div>
+        <div class="card-bd">
+          ${sc.fee?`
+          <div style="text-align:center;padding:16px 0">
+            <div style="font-size:32px;font-weight:800;color:var(--ink);letter-spacing:-1px">${parseInt(sc.fee).toLocaleString()}원</div>
+            <div style="font-size:13px;color:var(--ink3);margin-top:6px">부가세 별도 · 협의 가능</div>
+          </div>`:`
+          <div style="text-align:center;padding:16px 0;color:var(--ink3)">
+            <div style="font-size:14px;font-weight:600;margin-bottom:4px">강의 규모와 내용에 따라 협의</div>
+            <div style="font-size:12px">아래 연락처로 문의해 주세요</div>
+          </div>`}
+        </div>
+      </div>
+
+      <!-- ⑤ 강사 프로필 -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-t">👤 강사 프로필</div></div>
+        <div class="card-bd">
+          ${p.bio?`<div style="background:var(--pul);border-radius:12px;padding:14px;font-size:13px;color:var(--pud);line-height:1.7;font-style:italic;margin-bottom:14px">"${p.bio}"</div>`:''}
+          ${p.career?`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">경력</div><div style="font-size:13px;color:var(--ink2);line-height:1.8;white-space:pre-line">${p.career}</div></div>`:''}
+          ${p.awards?`<div><div style="font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:6px">수상·자격</div><div style="font-size:13px;color:var(--ink2);line-height:1.8">${p.awards}</div></div>`:''}
+        </div>
+      </div>
+
+      <!-- ⑥ 연락처 + SNS -->
+      <div class="card" style="margin-bottom:32px">
+        <div class="card-hd"><div class="card-t">📞 문의하기</div></div>
+        <div class="card-bd">
+          ${p.email?`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid var(--border)"><span style="font-size:13px;color:var(--ink3);width:50px">이메일</span><a href="mailto:${p.email}" style="font-size:13px;font-weight:600;color:var(--pu);text-decoration:none">${p.email}</a></div>`:''}
+          ${snsMap?`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">${snsMap}</div>`:''}
+          <div style="margin-top:16px;padding:14px;background:var(--bg2);border-radius:12px;text-align:center">
+            <div style="font-size:12px;color:var(--ink3);line-height:1.7">이 제안서는 <strong style="color:var(--ink)">AfterClass</strong>로 만들어졌어요<br>강의 문의 · 커리큘럼 조정 · 일정 협의 언제든지 환영합니다</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
 (async()=>{
   const params=new URLSearchParams(location.search);
+
+  // 강의 제안 페이지 (?proposal=강의ID)
+  if(params.get('proposal')){
+    await loadProposalPage(params.get('proposal'));
+    return;
+  }
 
   // 공개 프로필 접근
   if(params.get('p')){
