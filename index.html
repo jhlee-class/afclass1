@@ -323,6 +323,18 @@ textarea.f-inp{resize:none;line-height:1.6}
 .mat-panel{background:var(--white);border-radius:24px 24px 0 0;padding:24px 20px calc(24px + var(--sb));width:100%;max-width:390px;max-height:92vh;overflow-y:auto}
 .mat-link-type-btn{padding:7px 13px;border-radius:20px;border:1.5px solid var(--border2);background:var(--bg2);color:var(--ink3);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
 .mat-link-type-btn.sel{border-color:var(--pu);background:var(--pul);color:var(--pud)}
+
+/* ═══ 강의 상세 패널 ═══ */
+.sc-detail-panel{position:fixed;inset:0;background:var(--bg);z-index:160;display:flex;flex-direction:column;max-width:390px;margin:0 auto}
+.sc-detail-panel.hidden{display:none}
+@media(min-width:768px){
+  .sc-detail-panel{
+    left:auto;right:0;margin:0;
+    width:480px;max-width:480px;
+    box-shadow:-8px 0 32px rgba(23,25,35,.08);
+    border-left:1px solid var(--border);
+  }
+}
 @media(min-width:768px){
   .mat-panel-bg{align-items:stretch;justify-content:flex-end}
   .mat-panel{border-radius:0;max-width:420px;width:420px;max-height:100vh;height:100%;padding:32px 28px}
@@ -1610,8 +1622,10 @@ async function uploadMat(){
     if(!/^https?:\/\/.+/.test(url)){toast('올바른 URL을 입력해주세요 (https://...)');return;}
     btn.textContent='등록 중...';btn.disabled=true;
     try{
+      const{data:{user}}=await db.auth.getUser();
       const linkIcons={canva:'🎨',youtube:'▶',gdrive:'📂',notion:'📝',other:'🔗'};
       const{error}=await db.from('materials').insert([{
+        user_id:user?.id||null,
         title, lecture_title:lecTitle, description:desc,
         file_url:url, file_name:title,
         file_path:'', file_size:0,
@@ -1647,7 +1661,9 @@ async function uploadMat(){
     if(bar) bar.style.width='70%';
     if(progText) progText.textContent='정보 저장 중...';
     const{data:{publicUrl}}=db.storage.from('lecture-materials').getPublicUrl(path);
+    const{data:{user}}=await db.auth.getUser();
     const{error:dbErr}=await db.from('materials').insert([{
+      user_id:user?.id||null,
       title, lecture_title:lecTitle, description:desc,
       file_url:publicUrl, file_name:_selectedFile.name,
       file_path:path, file_size:_selectedFile.size,
@@ -1706,14 +1722,14 @@ async function showScDetail(id){
   window._scDetailId = id;
   _scDetailSc = sc;
   const overlay = document.getElementById('sc-detail-overlay');
-  overlay.style.display = 'flex';
+  overlay.classList.remove('hidden');
   setEl('scd-title', sc.title||'강의명');
   setEl('scd-meta', [sc.date, sc.org, sc.time].filter(Boolean).join(' · '));
   scdTab('info', document.getElementById('scd-tab-info'));
 }
 
 function closeScDetail(){
-  document.getElementById('sc-detail-overlay').style.display = 'none';
+  document.getElementById('sc-detail-overlay').classList.add('hidden');
   window._scDetailId = null;
   _scDetailSc = null;
 }
@@ -2173,7 +2189,7 @@ function authErrMsg(e){
 
 <!-- 강의 후기 상세 오버레이 -->
 <!-- 강의 상세 오버레이 (강의정보 + 강의자료 + 메모) -->
-<div id="sc-detail-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:160;flex-direction:column;max-width:390px;margin:0 auto">
+<div id="sc-detail-overlay" class="sc-detail-panel hidden">
   <!-- 헤더 -->
   <div style="background:var(--white);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;height:56px">
     <button onclick="closeScDetail()" style="width:36px;height:36px;border-radius:10px;background:var(--bg2);border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0">←</button>
