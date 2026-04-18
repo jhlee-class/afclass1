@@ -650,14 +650,28 @@ textarea.f-inp{resize:none;line-height:1.6}
     </div>
     <!-- 소속 유형 -->
     <div style="background:#fff;margin:0 14px 10px;border-radius:18px;padding:18px 20px">
-      <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:12px">소속 유형 선택</div>
+      <div style="font-size:13px;font-weight:800;color:var(--ink);margin-bottom:12px">소속 유형</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="org-type-grid">
-        <button class="org-type-btn sel" onclick="selOrgType(this,'기업')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6">🏢<br>기업</button>
-        <button class="org-type-btn" onclick="selOrgType(this,'공공기관')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6">🏛<br>공공기관</button>
-        <button class="org-type-btn" onclick="selOrgType(this,'대학·교육기관')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6">🎓<br>대학·교육</button>
-        <button class="org-type-btn" onclick="selOrgType(this,'병원·의료기관')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6">🏥<br>병원·의료</button>
-        <button class="org-type-btn" onclick="selOrgType(this,'협회·단체')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6">🤝<br>협회·단체</button>
-        <button class="org-type-btn" onclick="selOrgType(this,'기타')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6">📌<br>기타</button>
+        <button type="button" class="rv-sel-btn sel" onclick="selGroup('org-type-grid',this,'기업')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6;border:2px solid var(--pu);background:var(--pul);color:var(--pud);font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s">🏢<br>기업</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('org-type-grid',this,'공공기관')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🏛<br>공공기관</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('org-type-grid',this,'대학·교육기관')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🎓<br>대학·교육</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('org-type-grid',this,'협회·단체')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🤝<br>협회·단체</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('org-type-grid',this,'초중고')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🏫<br>초중고</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('org-type-grid',this,'기타')" style="padding:12px 4px;font-size:12px;text-align:center;border-radius:12px;line-height:1.6;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">📌<br>기타</button>
+      </div>
+    </div>
+    <!-- 강의 유형 -->
+    <div style="background:#fff;margin:0 14px 10px;border-radius:18px;padding:18px 20px">
+      <div style="font-size:13px;font-weight:800;color:var(--ink);margin-bottom:12px">강의 유형</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px" id="lec-type-grid">
+        <button type="button" class="rv-sel-btn" onclick="selGroup('lec-type-grid',this,'마케팅')" style="padding:9px 16px;border-radius:20px;font-size:13px;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">📢 마케팅</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('lec-type-grid',this,'광고·홍보')" style="padding:9px 16px;border-radius:20px;font-size:13px;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">📣 광고·홍보</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('lec-type-grid',this,'AI·디지털')" style="padding:9px 16px;border-radius:20px;font-size:13px;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🤖 AI·디지털</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('lec-type-grid',this,'리더십')" style="padding:9px 16px;border-radius:20px;font-size:13px;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🧭 리더십</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('lec-type-grid',this,'교육·학업')" style="padding:9px 16px;border-radius:20px;font-size:13px;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">📚 교육·학업</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('lec-type-grid',this,'자기계발')" style="padding:9px 16px;border-radius:20px;font-size:13px;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">💪 자기계발</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('lec-type-grid',this,'조직문화')" style="padding:9px 16px;border-radius:20px;font-size:13px;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🏢 조직문화</button>
+        <button type="button" class="rv-sel-btn" onclick="selGroup('lec-type-grid',this,'기타')" style="padding:9px 16px;border-radius:20px;font-size:13px;border:2px solid var(--border2);background:var(--bg2);color:var(--ink2);font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">📌 기타</button>
       </div>
     </div>
     <!-- 이름/소속 -->
@@ -909,8 +923,21 @@ function setStar(n){
 
 function selOrgType(btn, type){
   _orgType=type;
-  document.querySelectorAll('.org-type-btn').forEach(b=>b.classList.remove('sel'));
-  btn.classList.add('sel');
+  document.querySelectorAll('#org-type-grid .rv-sel-btn').forEach(b=>{
+    b.style.border='2px solid var(--border2)';b.style.background='var(--bg2)';b.style.color='var(--ink2)';b.style.fontWeight='600';
+  });
+  btn.style.border='2px solid var(--pu)';btn.style.background='var(--pul)';btn.style.color='var(--pud)';btn.style.fontWeight='800';
+}
+
+let _lecType='';
+function selGroup(gridId,btn,value){
+  const grid=document.getElementById(gridId);if(!grid)return;
+  grid.querySelectorAll('.rv-sel-btn').forEach(b=>{
+    b.style.border='2px solid var(--border2)';b.style.background='var(--bg2)';b.style.color='var(--ink2)';b.style.fontWeight='600';
+  });
+  btn.style.border='2px solid var(--pu)';btn.style.background='var(--pul)';btn.style.color='var(--pud)';btn.style.fontWeight='800';
+  if(gridId==='org-type-grid')_orgType=value;
+  if(gridId==='lec-type-grid')_lecType=value;
 }
 
 async function submitReview(){
@@ -926,6 +953,7 @@ async function submitReview(){
     lecture: _lecTitle,
     rating: _rating,
     org_type: _orgType,
+    lec_type: _lecType,
     name: document.getElementById('f-name')?.value.trim()||'',
     org:  document.getElementById('f-org')?.value.trim()||'',
     good: good,
