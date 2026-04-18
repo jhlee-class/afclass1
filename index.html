@@ -764,8 +764,8 @@ textarea.f-inp{resize:none;line-height:1.6}
     <div class="f-group"><span class="f-lbl">강의 커리큘럼</span><textarea class="f-inp" id="ml-curr" rows="3" placeholder="1강: ChatGPT 기초&#10;2강: 프롬프트 설계&#10;3강: 업무 자동화 실습"></textarea></div>
     <div class="f-group"><span class="f-lbl">날짜</span><input class="f-inp" id="ml-date" type="date"></div>
     <div class="f-2col" style="margin-bottom:12px">
-      <div class="f-group" style="margin-bottom:0"><span class="f-lbl">시작 시간</span><input class="f-inp" id="ml-time" type="time"></div>
-      <div class="f-group" style="margin-bottom:0"><span class="f-lbl">종료 시간</span><input class="f-inp" id="ml-etime" type="time"></div>
+      <div class="f-group" style="margin-bottom:0"><span class="f-lbl">시작 시간</span><input class="f-inp" id="ml-time" type="time" step="1800"></div>
+      <div class="f-group" style="margin-bottom:0"><span class="f-lbl">종료 시간</span><input class="f-inp" id="ml-etime" type="time" step="1800"></div>
     </div>
     <div class="f-group"><span class="f-lbl">기관명</span><input class="f-inp" id="ml-org" placeholder="예: 삼성전자 본사"></div>
     <div class="f-group"><span class="f-lbl">강의 장소</span><input class="f-inp" id="ml-loc" placeholder="예: 본사 3층 대강당"></div>
@@ -1293,77 +1293,175 @@ async function switchTab(tab,btn){
     const rv=await loadRv();
     const sc=await loadSc();
     const vis=rv.filter(function(r){return !r.hidden;});
+    const total=vis.length||1;
+    const avgRating=vis.length?(vis.reduce((s,r)=>s+(r.rating||0),0)/vis.length).toFixed(1):'0.0';
+
     // 별점 분포
-    const starDist=[5,4,3,2,1].map(function(s){return {s:s,cnt:vis.filter(function(r){return r.rating===s;}).length};});
-    const maxStar=Math.max.apply(null,starDist.map(function(d){return d.cnt;}).concat([1]));
-    // 소속 유형
+    const starDist=[5,4,3,2,1].map(s=>({s,cnt:vis.filter(r=>r.rating===s).length}));
+    const maxStar=Math.max(...starDist.map(d=>d.cnt),1);
+
+    // 소속 유형 — 도넛용 데이터
+    const orgColors={'기업':'#6C5CE7','공공기관':'#00B894','대학·교육기관':'#F39C12','병원·의료기관':'#E74C3C','협회·단체':'#0984E3','초중고':'#E91E8C','기타':'#B2BEC3'};
+    const orgNew=['기업','공공기관','대학·교육기관','협회·단체','초중고','기타'];
     const orgDist={};
-    ORG_TYPES.forEach(function(t){orgDist[t]=0;});
-    vis.forEach(function(r){const t=r.org_type||'기업';orgDist[t]=(orgDist[t]||0)+1;});
-    const maxOrg=Math.max.apply(null,Object.values(orgDist).concat([1]));
+    orgNew.forEach(t=>{orgDist[t]=0;});
+    vis.forEach(r=>{const t=r.org_type||'기업';orgDist[t]=(orgDist[t]||0)+1;});
+
+    // 도넛 SVG 생성
+    function donutSVG(data,colors,size=120){
+      const r=45,cx=60,cy=60,stroke=18;
+      const tot=data.reduce((s,d)=>s+d.cnt,0)||1;
+      let offset=0;
+      const circ=2*Math.PI*r;
+      let segs='';
+      data.forEach(d=>{
+        if(!d.cnt)return;
+        const pct=d.cnt/tot;
+        const dash=pct*circ;
+        const gap=circ-dash;
+        segs+=`<circle r="${r}" cx="${cx}" cy="${cy}" fill="none" stroke="${colors[d.label]||'#ccc'}" stroke-width="${stroke}" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(-offset*circ).toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+        offset+=pct;
+      });
+      return `<svg width="${size}" height="${size}" viewBox="0 0 120 120">${segs}<text x="60" y="55" text-anchor="middle" font-size="18" font-weight="800" fill="var(--ink)">${tot}</text><text x="60" y="72" text-anchor="middle" font-size="10" fill="var(--ink3)">전체</text></svg>`;
+    }
+
+    const orgData=orgNew.map(t=>({label:t,cnt:orgDist[t]||0}));
+    const donut=donutSVG(orgData,orgColors);
+
     // 시간대
     const timeDist={오전:0,오후:0,저녁:0,야간:0};
-    vis.forEach(function(r){if(!r.created_at)return;const h=new Date(r.created_at).getHours();if(h>=6&&h<12)timeDist.오전++;else if(h>=12&&h<17)timeDist.오후++;else if(h>=17&&h<21)timeDist.저녁++;else timeDist.야간++;});
+    vis.forEach(r=>{if(!r.created_at)return;const h=new Date(r.created_at).getHours();if(h>=6&&h<12)timeDist.오전++;else if(h>=12&&h<17)timeDist.오후++;else if(h>=17&&h<21)timeDist.저녁++;else timeDist.야간++;});
+    const maxTime=Math.max(...Object.values(timeDist),1);
     const timeIcons={오전:'🌅',오후:'☀️',저녁:'🌆',야간:'🌙'};
-    const totalRv=vis.length||1;
-    // 월별 강의
+
+    // 월별
     const monthMap={};
-    sc.forEach(function(s){if(!s.date)return;const mm=s.date.slice(0,7);monthMap[mm]=(monthMap[mm]||0)+1;});
+    sc.forEach(s=>{if(!s.date)return;const mm=s.date.slice(0,7);monthMap[mm]=(monthMap[mm]||0)+1;});
     const months=Object.keys(monthMap).sort().slice(-6);
-    const maxMonth=Math.max.apply(null,months.map(function(m){return monthMap[m];}).concat([1]));
+    const maxMonth=Math.max(...months.map(m=>monthMap[m]),1);
+
     // 수입
     const incomeMap={};
-    sc.forEach(function(s){if(!s.date||!s.fee)return;const mm=s.date.slice(0,7);incomeMap[mm]=(incomeMap[mm]||0)+(parseInt(s.fee)||0);});
+    sc.forEach(s=>{if(!s.date||!s.fee)return;const mm=s.date.slice(0,7);incomeMap[mm]=(incomeMap[mm]||0)+(parseInt(s.fee)||0);});
     const incMonths=Object.keys(incomeMap).sort().slice(-6);
-    const maxInc=Math.max.apply(null,incMonths.map(function(m){return incomeMap[m];}).concat([1]));
-    const totalInc=sc.reduce(function(sum,s){return sum+(parseInt(s.fee)||0);},0);
+    const maxInc=Math.max(...incMonths.map(m=>incomeMap[m]),1);
+    const totalInc=sc.reduce((s,x)=>s+(parseInt(x.fee)||0),0);
     const avgInc=sc.length?Math.round(totalInc/sc.length):0;
-    
+
     let html='';
-    // 별점 분포
-    html+='<div class="card"><div class="card-hd"><div class="card-t">⭐ 별점 분포</div><div style="font-size:12px;color:var(--ink3)">총 '+vis.length+'개</div></div><div class="card-bd">';
-    starDist.forEach(function(d){
-      html+='<div class="star-dist-row"><span class="sdr-stars">'+'★'.repeat(d.s)+'</span><div class="sdr-track"><div class="sdr-fill" style="width:'+Math.round(d.cnt/maxStar*100)+'%"></div></div><span class="sdr-cnt">'+d.cnt+'명</span></div>';
+
+    // ① 핵심 지표 4칸
+    html+=`<div class="stat-grid" style="margin-bottom:12px">
+      <div class="stat-c" style="text-align:center">
+        <div style="font-size:32px;font-weight:800;color:var(--am);letter-spacing:-1px">${avgRating}★</div>
+        <div class="sc-lbl">평균 별점</div>
+      </div>
+      <div class="stat-c" style="text-align:center">
+        <div style="font-size:32px;font-weight:800;color:var(--pu);letter-spacing:-1px">${vis.length}</div>
+        <div class="sc-lbl">총 후기 수</div>
+      </div>
+      <div class="stat-c" style="text-align:center">
+        <div style="font-size:24px;font-weight:800;color:var(--gr);letter-spacing:-1px">${totalInc>=10000?(totalInc/10000).toFixed(0)+'만':totalInc}</div>
+        <div class="sc-lbl">총 수입(원)</div>
+      </div>
+      <div class="stat-c" style="text-align:center">
+        <div style="font-size:32px;font-weight:800;color:var(--ac);letter-spacing:-1px">${sc.length}</div>
+        <div class="sc-lbl">총 강의 수</div>
+      </div>
+    </div>`;
+
+    // ② 별점 분포 — 가로 바
+    html+='<div class="card" style="margin-bottom:12px"><div class="card-hd"><div class="card-t">⭐ 별점 분포</div><div style="font-size:13px;color:var(--am);font-weight:800">'+avgRating+'점</div></div><div class="card-bd">';
+    starDist.forEach(d=>{
+      const w=Math.round(d.cnt/maxStar*100);
+      const pct=vis.length?Math.round(d.cnt/vis.length*100):0;
+      html+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:13px;color:var(--am);width:60px;flex-shrink:0">${'★'.repeat(d.s)}</span>
+        <div style="flex:1;height:10px;background:var(--bg2);border-radius:5px;overflow:hidden">
+          <div style="height:100%;width:${w}%;background:linear-gradient(90deg,#F39C12,#F8C471);border-radius:5px;transition:width .4s"></div>
+        </div>
+        <span style="font-size:12px;color:var(--ink3);width:52px;text-align:right;flex-shrink:0">${d.cnt}명 (${pct}%)</span>
+      </div>`;
     });
     html+='</div></div>';
-    // 소속 유형
-    html+='<div class="card"><div class="card-hd"><div class="card-t">🏢 소속 유형별 분포</div></div><div class="card-bd">';
-    ORG_TYPES.forEach(function(t){
-      const c=orgDist[t]||0;
-      html+='<div class="chart-bar-row"><span class="cbl">'+(t.length>6?t.slice(0,6)+'…':t)+'</span><div class="cb-track"><div class="cb-fill" style="width:'+Math.round(c/maxOrg*100)+'%;background:'+ORG_COLORS[t]+'"></div></div><span class="cbv">'+c+'명</span></div>';
-    });
-    html+='</div></div>';
-    // 시간대
-    html+='<div class="card"><div class="card-hd"><div class="card-t">🕐 후기 작성 시간대</div></div><div class="card-bd"><div class="time-grid">';
-    Object.entries(timeDist).forEach(function(entry){
-      html+='<div class="time-c"><div class="time-ic">'+timeIcons[entry[0]]+'</div><div class="time-lbl">'+entry[0]+'</div><div class="time-cnt">'+entry[1]+'</div><div class="time-pct">'+Math.round(entry[1]/totalRv*100)+'%</div></div>';
-    });
-    html+='</div></div></div>';
-    // 월별 강의
-    html+='<div class="card"><div class="card-hd"><div class="card-t">📅 월별 강의 추이</div></div><div class="card-bd">';
+
+    // ③ 소속 유형 — 도넛 + 범례
+    html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div class="card-t">🏢 소속 유형</div></div><div class="card-bd">
+      <div style="display:flex;gap:16px;align-items:center">
+        <div style="flex-shrink:0">${donut}</div>
+        <div style="flex:1">
+          ${orgData.filter(d=>d.cnt>0).map(d=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+              <div style="width:10px;height:10px;border-radius:50%;background:${orgColors[d.label]||'#ccc'};flex-shrink:0"></div>
+              <span style="font-size:12px;color:var(--ink2);flex:1">${d.label}</span>
+              <span style="font-size:12px;font-weight:700;color:var(--ink)">${d.cnt}명</span>
+            </div>`).join('')}
+          ${orgData.every(d=>!d.cnt)?'<div style="font-size:13px;color:var(--ink3)">데이터 없음</div>':''}
+        </div>
+      </div>
+    </div></div>`;
+
+    // ④ 시간대 — 세로 바 4칸
+    html+=`<div class="card" style="margin-bottom:12px"><div class="card-hd"><div class="card-t">🕐 후기 작성 시간대</div></div><div class="card-bd">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+        ${Object.entries(timeDist).map(([k,v])=>{
+          const h=Math.round(v/maxTime*72);
+          const pct=vis.length?Math.round(v/vis.length*100):0;
+          return `<div>
+            <div style="font-size:18px;margin-bottom:4px">${timeIcons[k]}</div>
+            <div style="height:72px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px">
+              <div style="width:28px;height:${Math.max(h,2)}px;background:linear-gradient(180deg,var(--pu),var(--pud));border-radius:4px 4px 0 0"></div>
+            </div>
+            <div style="font-size:12px;font-weight:800;color:var(--ink)">${v}명</div>
+            <div style="font-size:10px;color:var(--ink3)">${k} (${pct}%)</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div></div>`;
+
+    // ⑤ 월별 강의 추이
+    html+='<div class="card" style="margin-bottom:12px"><div class="card-hd"><div class="card-t">📅 월별 강의</div></div><div class="card-bd">';
     if(months.length){
-      months.forEach(function(m){
-        html+='<div class="chart-bar-row"><span class="cbl">'+m.slice(5)+'월</span><div class="cb-track"><div class="cb-fill" style="width:'+Math.round(monthMap[m]/maxMonth*100)+'%;background:var(--pu)"></div></div><span class="cbv">'+monthMap[m]+'회</span></div>';
+      months.forEach(m=>{
+        const w=Math.round(monthMap[m]/maxMonth*100);
+        html+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--ink3);width:32px;flex-shrink:0">${m.slice(5)}월</span>
+          <div style="flex:1;height:10px;background:var(--bg2);border-radius:5px;overflow:hidden">
+            <div style="height:100%;width:${w}%;background:linear-gradient(90deg,var(--pu),var(--pud));border-radius:5px"></div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:var(--ink);width:24px;text-align:right">${monthMap[m]}회</span>
+        </div>`;
       });
     } else {
       html+='<div class="empty-s" style="padding:16px 0"><div class="es-ic">📅</div><div class="es-t">강의 데이터가 없어요</div></div>';
     }
     html+='</div></div>';
-    // 수입 대시보드
-    html+='<div class="card"><div class="card-hd"><div class="card-t">💰 수입 대시보드</div></div><div class="card-bd">';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">';
-    html+='<div style="background:var(--grl);border-radius:12px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--gr);font-weight:700;margin-bottom:4px">총 수입</div><div style="font-size:18px;font-weight:800;color:var(--ink)">'+(totalInc>=10000?(totalInc/10000).toFixed(0)+'만원':totalInc+'원')+'</div></div>';
-    html+='<div style="background:var(--pul);border-radius:12px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--pu);font-weight:700;margin-bottom:4px">강의당 평균</div><div style="font-size:18px;font-weight:800;color:var(--ink)">'+(avgInc>=10000?(avgInc/10000).toFixed(0)+'만원':avgInc+'원')+'</div></div>';
-    html+='</div>';
+
+    // ⑥ 수입 대시보드
+    html+=`<div class="card"><div class="card-hd"><div class="card-t">💰 수입 현황</div></div><div class="card-bd">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="background:var(--grl);border-radius:14px;padding:16px;text-align:center">
+          <div style="font-size:11px;color:var(--gr);font-weight:700;margin-bottom:4px">누적 수입</div>
+          <div style="font-size:20px;font-weight:800;color:var(--ink)">${totalInc>=10000?(totalInc/10000).toFixed(0)+'만':totalInc}원</div>
+        </div>
+        <div style="background:var(--pul);border-radius:14px;padding:16px;text-align:center">
+          <div style="font-size:11px;color:var(--pu);font-weight:700;margin-bottom:4px">강의당 평균</div>
+          <div style="font-size:20px;font-weight:800;color:var(--ink)">${avgInc>=10000?(avgInc/10000).toFixed(0)+'만':avgInc}원</div>
+        </div>
+      </div>`;
     if(incMonths.length){
-      html+='<div style="font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">월별 수입</div>';
-      incMonths.forEach(function(m){
+      incMonths.forEach(m=>{
         const v=incomeMap[m];
+        const w=Math.round(v/maxInc*100);
         const dv=v>=10000?(v/10000).toFixed(0)+'만':v;
-        html+='<div class="chart-bar-row"><span class="cbl">'+m.slice(5)+'월</span><div class="cb-track"><div class="cb-fill" style="width:'+Math.round(v/maxInc*100)+'%;background:var(--gr)"></div></div><span class="cbv">'+dv+'원</span></div>';
+        html+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--ink3);width:32px;flex-shrink:0">${m.slice(5)}월</span>
+          <div style="flex:1;height:10px;background:var(--bg2);border-radius:5px;overflow:hidden">
+            <div style="height:100%;width:${w}%;background:linear-gradient(90deg,var(--gr),#00D2A4);border-radius:5px"></div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:var(--ink);width:44px;text-align:right">${dv}원</span>
+        </div>`;
       });
-    } else {
-      html+='<div class="empty-s" style="padding:16px 0"><div class="es-ic">💰</div><div class="es-t">수입 데이터가 없어요</div><div class="es-d">강의 추가 시 강의료를 입력하세요</div></div>';
     }
     html+='</div></div>';
     body.innerHTML=html;
@@ -1464,18 +1562,48 @@ async function switchTab(tab,btn){
   }else if(tab==='materials'){
     body.innerHTML='<div class="loading-wrap"><div class="spin"></div>불러오는 중...</div>';
     const mats=await loadMaterials();
+    // 기간 필터 상태
+    const now=new Date();
+    const thisMonth=now.toISOString().slice(0,7);
+    const totalDl=mats.reduce((s,m)=>s+(m.downloads||0),0);
+    const topMat=mats.length?[...mats].sort((a,b)=>(b.downloads||0)-(a.downloads||0))[0]:null;
     body.innerHTML=`
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-size:13px;color:var(--ink3)">총 ${mats.length}개 자료</div>
-        <button class="btn btn-ac btn-sm" onclick="openMatUpload()">+ 자료 업로드</button>
+      <!-- 요약 카드 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="stat-c" style="text-align:center">
+          <div style="font-size:28px;font-weight:800;color:var(--pu)">${mats.length}</div>
+          <div class="sc-lbl">등록 자료</div>
+        </div>
+        <div class="stat-c" style="text-align:center">
+          <div style="font-size:28px;font-weight:800;color:var(--gr)">${totalDl}</div>
+          <div class="sc-lbl">총 다운로드</div>
+        </div>
       </div>
-      ${mats.length?mats.map(function(m){
-        const size=m.file_size?(m.file_size/1024/1024).toFixed(1)+'MB':'';
-        const icon=m.file_type&&m.file_type.includes('pdf')?'📄':m.file_type&&m.file_type.includes('presentation')?'📊':m.file_type&&m.file_type.includes('sheet')?'📈':m.file_type&&m.file_type.includes('image')?'🖼':'📁';
-        const dt=m.created_at?new Date(m.created_at).toLocaleDateString('ko-KR'):'';
-        return '<div class="card" style="margin-bottom:12px"><div class="card-bd"><div style="display:flex;gap:12px;align-items:flex-start"><div style="width:48px;height:48px;background:var(--pul);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">'+icon+'</div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:var(--ink);margin-bottom:3px">'+m.title+'</div>'+(m.lecture_title?'<div style="font-size:11px;color:var(--pu);font-weight:600;margin-bottom:3px">📌 '+m.lecture_title+'</div>':'')+'<div style="font-size:11px;color:var(--ink3)">'+(size?size+' · ':'')+dt+'</div><div style="font-size:11px;color:var(--ink3);margin-top:2px">⬇ '+(m.downloads||0)+'회 다운로드</div>'+(m.description?'<div style="font-size:12px;color:var(--ink2);margin-top:8px;line-height:1.5;padding:8px 10px;background:var(--bg);border-radius:8px">'+m.description+'</div>':'')+'</div></div><div style="display:flex;gap:7px;margin-top:12px"><button onclick="downloadMat(\''+m.id+'\',\''+(m.file_url||'').replace(/\'/g,'').replace(/"/g,'')+'\',\''+(m.file_name||'').replace(/\'/g,'').replace(/"/g,'')+'\')" style="flex:1;padding:9px;border-radius:10px;background:var(--pu);border:none;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">⬇ 다운로드</button><button onclick="deleteMat(\''+m.id+'\',\''+(m.file_path||'').replace(/\'/g,'')+'\')" style="padding:9px 14px;border-radius:10px;background:var(--rdl);border:none;font-size:12px;font-weight:700;color:var(--rd);cursor:pointer;font-family:inherit">🗑️</button></div></div></div>';
-      }).join(''):'<div class="empty-s"><div class="es-ic">📁</div><div class="es-t">아직 자료가 없어요</div><div class="es-d">+ 자료 업로드 버튼으로 시작해보세요</div></div>'}
-    `;
+      ${topMat&&topMat.downloads>0?`
+      <div style="background:var(--pul);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+        <div style="font-size:22px">🏆</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:700;color:var(--pud);margin-bottom:3px">가장 많이 다운된 자료</div>
+          <div style="font-size:14px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${topMat.title}</div>
+        </div>
+        <div style="font-size:18px;font-weight:800;color:var(--pud);flex-shrink:0">${topMat.downloads}회</div>
+      </div>`:''}
+      <!-- 기간 필터 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--ink3);font-weight:600">기간:</span>
+        <select id="mat-filter-lec" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg);font-family:inherit;color:var(--ink);outline:none" onchange="filterMaterials()">
+          <option value="">전체 강의</option>
+          ${allSc.map(s=>`<option value="${s.title}">${s.title}</option>`).join('')}
+        </select>
+        <select id="mat-filter-type" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg);font-family:inherit;color:var(--ink);outline:none" onchange="filterMaterials()">
+          <option value="">전체 유형</option>
+          <option value="file">📎 파일</option>
+          <option value="link">🔗 링크</option>
+        </select>
+        <button onclick="openMatUpload()" style="padding:6px 14px;border-radius:8px;background:var(--ac);border:none;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-left:auto">+ 자료 등록</button>
+      </div>
+      <div id="mat-list"></div>`;
+    filterMaterials();
 
   }else if(tab==='profile'){
     try{_customQs=profile.custom_questions?JSON.parse(profile.custom_questions):[];}catch(e){_customQs=[];}
@@ -1488,10 +1616,17 @@ async function switchTab(tab,btn){
         '<div class="pf-sec-t">기본 정보</div>'+
         '<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">'+
           '<div class="pf-av-lg" id="pf-av-lg">'+(p.photo_url?'<img src="'+p.photo_url+'">':(p.name||'이')[0])+'</div>'+
-          '<div style="flex:1"><div class="pf-photo-desc">사진 URL을 입력하면 프로필 사진이 적용됩니다</div>'+
-          '<button class="btn btn-out btn-sm" style="font-size:12px" onclick="previewPhoto()">미리보기</button></div>'+
+          '<div style="flex:1">'+
+            '<div class="pf-photo-desc">사진을 업로드하거나 URL을 입력하세요</div>'+
+            '<div style="display:flex;gap:8px;margin-top:8px">'+
+              '<input type="file" id="pf-photo-file" accept="image/*" style="display:none" onchange="uploadProfilePhoto(event)">'+
+              '<button class="btn btn-pu btn-sm" style="font-size:12px" onclick="document.getElementById(\"pf-photo-file\").click()">📷 업로드</button>'+
+              '<button class="btn btn-out btn-sm" style="font-size:12px" onclick="previewPhoto()">미리보기</button>'+
+            '</div>'+
+            '<div id="pf-photo-progress" style="display:none;margin-top:8px"><div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="pf-photo-bar" style="height:100%;width:0%;background:var(--pu);transition:width .3s"></div></div><div style="font-size:11px;color:var(--ink3);margin-top:4px">업로드 중...</div></div>'+
+          '</div>'+
         '</div>'+
-        '<div class="f-group"><span class="f-lbl">사진 URL</span><input class="f-inp" id="pf-photo" value="'+(p.photo_url||'')+'" placeholder="https://..."></div>'+
+        '<div class="f-group"><span class="f-lbl">사진 URL <span style="color:var(--ink3);font-weight:400">(직접 입력)</span></span><input class="f-inp" id="pf-photo" value="'+(p.photo_url||'')+'" placeholder="https://..."></div>'+
         '<div class="f-group"><span class="f-lbl">이름</span><input class="f-inp" id="pf-name" value="'+(p.name||'')+'"></div>'+
         '<div class="f-group"><span class="f-lbl">소속</span><input class="f-inp" id="pf-org" value="'+(p.org||'')+'"></div>'+
         '<div class="f-group"><span class="f-lbl">한줄 소개 태그</span><input class="f-inp" id="pf-tagline" value="'+(p.tagline||'')+'" placeholder="AI 활용 · 리더십 · 조직문화"></div>'+
@@ -1592,7 +1727,85 @@ async function genAISummary(){
   btn.textContent='다시 생성';btn.disabled=false;
 }
 
-// ── 강의자료 함수들 ────────────────────────────────────────────────
+// ── 프로필 사진 업로드 ────────────────────────────────────────────
+async function uploadProfilePhoto(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  if(file.size>5*1024*1024){toast('사진은 5MB 이하여야 해요');return;}
+  const prog=document.getElementById('pf-photo-progress');
+  const bar=document.getElementById('pf-photo-bar');
+  if(prog)prog.style.display='block';
+  if(bar)bar.style.width='30%';
+  try{
+    const ext=file.name.split('.').pop();
+    const path=`profiles/${Date.now()}.${ext}`;
+    const{error:upErr}=await db.storage.from('lecture-materials').upload(path,file,{cacheControl:'3600',upsert:true});
+    if(upErr)throw upErr;
+    if(bar)bar.style.width='80%';
+    const{data:{publicUrl}}=db.storage.from('lecture-materials').getPublicUrl(path);
+    // 입력창 + 미리보기 업데이트
+    const inp=document.getElementById('pf-photo');
+    if(inp)inp.value=publicUrl;
+    const av=document.getElementById('pf-av-lg');
+    if(av)av.innerHTML=`<img src="${publicUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:22px">`;
+    if(bar)bar.style.width='100%';
+    toast('사진이 업로드됐어요 ✅');
+    setTimeout(()=>{if(prog)prog.style.display='none';},1000);
+  }catch(e){
+    console.error(e);
+    toast('업로드 실패: '+(e.message||'다시 시도해주세요'));
+    if(prog)prog.style.display='none';
+  }
+}
+
+// ── 강의자료 필터링 ───────────────────────────────────────────────
+function filterMaterials(){
+  const lecFilter=document.getElementById('mat-filter-lec')?.value||'';
+  const typeFilter=document.getElementById('mat-filter-type')?.value||'';
+  const list=document.getElementById('mat-list');
+  if(!list)return;
+  let mats=window._allMats||[];
+  if(lecFilter)mats=mats.filter(m=>m.lecture_title===lecFilter);
+  if(typeFilter==='file')mats=mats.filter(m=>!m.file_type?.startsWith('link/'));
+  if(typeFilter==='link')mats=mats.filter(m=>m.file_type?.startsWith('link/'));
+  if(!mats.length){list.innerHTML='<div class="empty-s"><div class="es-ic">📁</div><div class="es-t">자료가 없어요</div></div>';return;}
+  const maxDl=Math.max(...mats.map(m=>m.downloads||0),1);
+  list.innerHTML=mats.map(m=>{
+    const isLink=m.file_type?.startsWith('link/');
+    const linkType=isLink?m.file_type.split('/')[1]:'';
+    const icons={canva:'🎨',youtube:'▶',gdrive:'📂',notion:'📝',other:'🔗'};
+    const icon=isLink?(icons[linkType]||'🔗'):(m.file_type?.includes('pdf')?'📄':m.file_type?.includes('presentation')?'📊':'📁');
+    const size=m.file_size?(m.file_size/1024/1024).toFixed(1)+'MB':'';
+    const dt=m.created_at?new Date(m.created_at).toLocaleDateString('ko-KR'):'';
+    const dlPct=Math.round((m.downloads||0)/maxDl*100);
+    const typeLabel=isLink?({canva:'Canva',youtube:'YouTube',gdrive:'Google Drive',notion:'Notion',other:'링크'}[linkType]||'링크'):size;
+    return `<div class="card" style="margin-bottom:10px"><div class="card-bd">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="width:46px;height:46px;background:var(--pul);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:800;color:var(--ink);margin-bottom:3px">${m.title}</div>
+          ${m.lecture_title?`<div style="font-size:11px;color:var(--pu);font-weight:600;margin-bottom:3px">📌 ${m.lecture_title}</div>`:''}
+          <div style="font-size:11px;color:var(--ink3)">${typeLabel} · ${dt}</div>
+          <div style="margin-top:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:11px;color:var(--ink3)">⬇ 다운로드</span>
+              <span style="font-size:12px;font-weight:800;color:var(--ink)">${m.downloads||0}회</span>
+            </div>
+            <div style="height:4px;background:var(--bg2);border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:${dlPct}%;background:linear-gradient(90deg,var(--pu),var(--pud));border-radius:2px"></div>
+            </div>
+          </div>
+          ${m.description?`<div style="font-size:12px;color:var(--ink2);margin-top:8px;line-height:1.5;padding:8px 10px;background:var(--bg);border-radius:8px">${m.description}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:7px;margin-top:12px">
+        <a href="${m.file_url}" target="_blank" style="flex:1;padding:9px;border-radius:10px;background:var(--pu);border:none;font-size:12px;font-weight:700;color:#fff;cursor:pointer;text-decoration:none;text-align:center">${isLink?'🔗 열기':'⬇ 다운로드'}</a>
+        <button onclick="deleteMat('${m.id}','${(m.file_path||'')}')" style="padding:9px 14px;border-radius:10px;background:var(--rdl);border:none;font-size:12px;font-weight:700;color:var(--rd);cursor:pointer;font-family:inherit">🗑️</button>
+      </div>
+    </div></div>`;
+  }).join('');
+}
+
 let _selectedFile = null;
 let _matMode = 'file'; // 'file' | 'link'
 let _linkType = 'canva';
