@@ -882,6 +882,58 @@ textarea.f-inp{resize:none;line-height:1.6}
   </div>
 </div>
 
+<!-- 제안서 일정 선택 패널 -->
+<div id="m-proposal" class="mat-panel-bg hidden" onclick="closeModal('m-proposal')">
+  <div class="mat-panel" onclick="event.stopPropagation()" style="max-height:80vh">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="modal-t" style="margin-bottom:0">📄 제안서 링크 만들기</div>
+      <button onclick="closeModal('m-proposal')" style="width:36px;height:36px;border-radius:10px;background:var(--bg2);border:none;font-size:18px;cursor:pointer;font-family:inherit">✕</button>
+    </div>
+
+    <!-- 강의명 표시 -->
+    <div style="background:var(--pul);border-radius:12px;padding:12px 16px;margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--pud);margin-bottom:3px">선택된 강의</div>
+      <div style="font-size:15px;font-weight:800;color:var(--pu)" id="proposal-lec-title">강의명</div>
+    </div>
+
+    <!-- 날짜 옵션 선택 -->
+    <div style="font-size:13px;font-weight:800;color:var(--ink);margin-bottom:12px">일정 옵션 선택</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
+
+      <!-- 옵션 A: 날짜 확정 -->
+      <div id="prop-opt-a" onclick="selProposalOpt('a')" style="padding:14px 16px;border-radius:14px;border:2px solid var(--pu);background:var(--pul);cursor:pointer;transition:all .15s">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:20px;height:20px;border-radius:50%;background:var(--pu);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <div style="width:8px;height:8px;border-radius:50%;background:#fff"></div>
+          </div>
+          <div style="font-size:13px;font-weight:800;color:var(--pud)">특정 날짜 확정</div>
+        </div>
+        <div id="prop-a-detail">
+          <input type="date" id="prop-date" class="f-inp" style="background:var(--white);margin-bottom:8px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input type="time" id="prop-time-start" class="f-inp" placeholder="시작" step="1800" style="background:var(--white)">
+            <input type="time" id="prop-time-end" class="f-inp" placeholder="종료" step="1800" style="background:var(--white)">
+          </div>
+        </div>
+      </div>
+
+      <!-- 옵션 B: 날짜 미정 -->
+      <div id="prop-opt-b" onclick="selProposalOpt('b')" style="padding:14px 16px;border-radius:14px;border:2px solid var(--border2);background:var(--bg2);cursor:pointer;transition:all .15s">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:20px;height:20px;border-radius:50%;border:2px solid var(--ink3);flex-shrink:0"></div>
+          <div style="font-size:13px;font-weight:800;color:var(--ink2)">날짜 협의 가능</div>
+        </div>
+        <div id="prop-b-detail" style="display:none">
+          <textarea id="prop-avail" class="f-inp" rows="2" placeholder="예) 5월 중순 이후 가능&#10;매주 화·목 가능&#10;일정 협의 연락주세요" style="background:var(--white)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 링크 복사 버튼 -->
+    <button onclick="generateProposalLink()" style="width:100%;padding:16px;border-radius:14px;background:var(--ink);border:none;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">🔗 제안서 링크 복사</button>
+  </div>
+</div>
+
 <div class="toast" id="toast-el"></div>
 
 <script>
@@ -2225,11 +2277,75 @@ async function completeLecture(id){
   }
 }
 
+// ── 제안서 패널 ───────────────────────────────────────────────────
+let _proposalScId = null;
+let _proposalOpt = 'a'; // 'a'=날짜확정, 'b'=협의
+
 function copyProposalLink(id){
-  const url=BASE_URL+'?proposal='+id;
+  // 이전 방식 유지 (스케줄 상세에서 호출 시)
+  openProposalPanel(id);
+}
+
+function openProposalPanel(id){
+  _proposalScId = id;
+  _proposalOpt = 'a';
+  const sc = allSc.find(s=>s.id===id);
+  if(sc){
+    setEl('proposal-lec-title', sc.title||'강의명');
+    // 등록된 날짜/시간이 있으면 미리 채우기
+    const dateInp = document.getElementById('prop-date');
+    const tsInp = document.getElementById('prop-time-start');
+    const teInp = document.getElementById('prop-time-end');
+    if(dateInp) dateInp.value = sc.date||'';
+    if(tsInp) tsInp.value = sc.time||'';
+    if(teInp) teInp.value = sc.end_time||'';
+  }
+  selProposalOpt('a');
+  document.getElementById('m-proposal').classList.remove('hidden');
+  document.getElementById('m-proposal').style.display='';
+}
+
+function selProposalOpt(opt){
+  _proposalOpt = opt;
+  const optA = document.getElementById('prop-opt-a');
+  const optB = document.getElementById('prop-opt-b');
+  const detA = document.getElementById('prop-a-detail');
+  const detB = document.getElementById('prop-b-detail');
+  if(opt==='a'){
+    optA.style.border='2px solid var(--pu)'; optA.style.background='var(--pul)';
+    optA.querySelector('div div').style.background='var(--pu)';
+    optA.querySelector('div div + div').style.color='var(--pud)';
+    optB.style.border='2px solid var(--border2)'; optB.style.background='var(--bg2)';
+    optB.querySelector('div div').style.background='transparent';
+    detA.style.display='block'; detB.style.display='none';
+  } else {
+    optB.style.border='2px solid var(--pu)'; optB.style.background='var(--pul)';
+    optB.querySelector('div div').style.background='var(--pu)';
+    optB.querySelector('div div + div').style.color='var(--pud)';
+    optA.style.border='2px solid var(--border2)'; optA.style.background='var(--bg2)';
+    optA.querySelector('div div').style.background='transparent';
+    detA.style.display='none'; detB.style.display='block';
+  }
+}
+
+function generateProposalLink(){
+  if(!_proposalScId){ toast('강의를 찾을 수 없어요'); return; }
+  let url = BASE_URL + '?proposal=' + _proposalScId;
+  if(_proposalOpt==='a'){
+    const d = document.getElementById('prop-date')?.value||'';
+    const ts = document.getElementById('prop-time-start')?.value||'';
+    const te = document.getElementById('prop-time-end')?.value||'';
+    if(d) url += '&date='+encodeURIComponent(d);
+    if(ts) url += '&ts='+encodeURIComponent(ts);
+    if(te) url += '&te='+encodeURIComponent(te);
+  } else {
+    const avail = document.getElementById('prop-avail')?.value.trim()||'';
+    if(avail) url += '&avail='+encodeURIComponent(avail);
+  }
   navigator.clipboard.writeText(url).then(()=>{
-    toast('제안서 링크가 복사됐어요 📋 담당자에게 바로 붙여넣으세요!');
-  }).catch(()=>toast('링크: '+url));
+    closeModal('m-proposal');
+    toast('제안서 링크가 복사됐어요 📋');
+  }).catch(()=>{ toast('링크: '+url); });
 }
 
 async function openQRFor(lectureId){
@@ -2474,10 +2590,16 @@ async function loadPublicProfile(slug){
 
 // ── 강의 제안 페이지 (?proposal=강의ID) ──────────────────────────
 async function loadProposalPage(scheduleId){
-  // 뷰를 공개 프로필용으로 재활용
   goView('v-public');
   const scroll=document.getElementById('pub-scroll');
   scroll.innerHTML='<div class="loading-wrap"><div class="spin"></div>제안서 불러오는 중...</div>';
+
+  // URL 파라미터 읽기
+  const params=new URLSearchParams(location.search);
+  const paramDate=params.get('date')||'';
+  const paramTs=params.get('ts')||'';
+  const paramTe=params.get('te')||'';
+  const paramAvail=decodeURIComponent(params.get('avail')||'');
 
   // 데이터 병렬 로드
   const[{data:scs},{data:profiles},{data:rvs}]=await Promise.all([
@@ -2492,17 +2614,58 @@ async function loadProposalPage(scheduleId){
   const name=p.name||'강사';
   const total=rvs?.length||0;
   const avg=total?(rvs.reduce((s,r)=>s+(r.rating||0),0)/total).toFixed(1):'0.0';
-  // 관련 후기 (같은 강의명 또는 유사 키워드)
   const relRvs=(rvs||[]).filter(r=>r.lecture===sc.title).slice(0,3);
   const topRvs=relRvs.length?relRvs:(rvs||[]).slice(0,3);
-  // 강의자료 (첨부 사진 등)
-  const{data:mats}=await db.from('materials').select('*').eq('lecture_title',sc.title);
 
   const snsMap=[
     p.instagram&&`<a href="https://instagram.com/${p.instagram.replace('@','')}" target="_blank" style="padding:7px 14px;border-radius:20px;background:#E1306C;color:#fff;font-size:12px;font-weight:700;text-decoration:none">📸 Instagram</a>`,
     p.youtube&&`<a href="https://youtube.com/@${p.youtube}" target="_blank" style="padding:7px 14px;border-radius:20px;background:#FF0000;color:#fff;font-size:12px;font-weight:700;text-decoration:none">▶ YouTube</a>`,
     p.kakao&&`<a href="https://pf.kakao.com/_${p.kakao}" target="_blank" style="padding:7px 14px;border-radius:20px;background:#FEE500;color:#3C1E1E;font-size:12px;font-weight:700;text-decoration:none">💬 KakaoTalk</a>`,
   ].filter(Boolean).join('');
+
+  // 일정 섹션 생성
+  let scheduleSection='';
+  const showDate = paramDate || sc.date;
+  const showTs = paramTs || sc.time;
+  const showTe = paramTe || sc.end_time;
+
+  if(paramAvail){
+    // 협의 가능 모드
+    scheduleSection=`<div class="card" style="margin-bottom:14px">
+      <div class="card-hd"><div class="card-t">📅 강의 가능 일정</div></div>
+      <div class="card-bd">
+        <div style="background:var(--aml);border-radius:12px;padding:16px;display:flex;gap:12px;align-items:flex-start">
+          <div style="font-size:22px;flex-shrink:0">🗓️</div>
+          <div>
+            <div style="font-size:13px;font-weight:800;color:#854F0B;margin-bottom:6px">협의 가능한 일정</div>
+            <div style="font-size:14px;color:var(--ink);line-height:1.7;white-space:pre-line">${paramAvail}</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--ink3);text-align:center">정확한 날짜는 아래 연락처로 문의해 주세요</div>
+      </div>
+    </div>`;
+  } else if(showDate){
+    // 날짜 확정 모드
+    const dateObj=new Date(showDate);
+    const dayNames=['일','월','화','수','목','금','토'];
+    const dayStr=`${dateObj.getFullYear()}년 ${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${dayNames[dateObj.getDay()]})`;
+    scheduleSection=`<div class="card" style="margin-bottom:14px">
+      <div class="card-hd"><div class="card-t">📅 강의 일정</div></div>
+      <div class="card-bd">
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center">
+          <div style="width:60px;height:60px;background:var(--pul);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <div style="font-size:22px;font-weight:800;color:var(--pu);line-height:1">${dateObj.getDate()}</div>
+            <div style="font-size:10px;color:var(--pud);font-weight:700">${dateObj.getMonth()+1}월</div>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:800;color:var(--ink)">${dayStr}</div>
+            ${showTs?`<div style="font-size:14px;color:var(--ink2);margin-top:4px">🕐 ${showTs}${showTe?' ~ '+showTe:''}</div>`:''}
+            ${sc.location?`<div style="font-size:13px;color:var(--ink3);margin-top:4px">📍 ${sc.location}</div>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
 
   scroll.innerHTML=`
     <!-- ① 헤더 -->
@@ -2519,58 +2682,47 @@ async function loadProposalPage(scheduleId){
 
     <div style="padding:0 16px;margin-top:-20px">
 
-      <!-- ② 강의 제목 및 커리큘럼 -->
+      <!-- ② 강의 일정 (최상단 배치) -->
+      ${scheduleSection}
+
+      <!-- ③ 강의 제목 및 커리큘럼 -->
       <div class="card" style="margin-bottom:14px;position:relative;z-index:1">
         <div class="card-hd"><div class="card-t">📚 강의 제목 및 커리큘럼</div></div>
         <div class="card-bd">
           <div style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:8px">${sc.title}</div>
           ${sc.topics?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${sc.topics.split(',').filter(t=>t.trim()).map(t=>`<span style="background:var(--pul);color:var(--pud);font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px">${t.trim()}</span>`).join('')}</div>`:''}
           ${sc.curriculum?`<div style="background:var(--bg2);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:800;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">커리큘럼</div><div style="font-size:13px;color:var(--ink2);line-height:1.9;white-space:pre-line">${sc.curriculum}</div></div>`:'<div style="font-size:13px;color:var(--ink3)">커리큘럼은 요청에 맞게 맞춤 구성됩니다.</div>'}
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
-            ${sc.n?`<div style="background:var(--bg2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:4px">예상 인원</div><div style="font-size:16px;font-weight:800;color:var(--ink)">${sc.n}명</div></div>`:''}
-            ${sc.time?`<div style="background:var(--bg2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:4px">강의 시간</div><div style="font-size:16px;font-weight:800;color:var(--ink)">${sc.time}${sc.end_time?' ~ '+sc.end_time:''}</div></div>`:''}
-          </div>
+          ${sc.n?`<div style="margin-top:12px;background:var(--bg2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:4px">예상 인원</div><div style="font-size:16px;font-weight:800;color:var(--ink)">${sc.n}명</div></div>`:''}
         </div>
       </div>
 
-      <!-- ③ 이전 비슷한 강의 후기 및 평점 -->
+      <!-- ④ 후기 -->
       ${topRvs.length?`<div class="card" style="margin-bottom:14px">
-        <div class="card-hd">
-          <div class="card-t">💬 수강생 후기 및 평점</div>
-          <div style="font-size:14px;font-weight:800;color:var(--am)">${avg}★</div>
-        </div>
-        <div class="card-bd">
-          ${topRvs.map(r=>`<div style="padding:14px;background:var(--bg2);border-radius:12px;margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-              <div>
-                <span style="font-size:13px;font-weight:700;color:var(--ink)">${r.name||'익명'}</span>
-                ${r.org?`<span style="font-size:11px;color:var(--ink3);margin-left:8px">${r.org}</span>`:''}
-                ${r.lecture?`<div style="font-size:11px;color:var(--pu);font-weight:600;margin-top:2px">📌 ${r.lecture}</div>`:''}
-              </div>
-              <span style="color:var(--am);font-size:13px">${'★'.repeat(r.rating||5)}</span>
-            </div>
-            ${r.good?`<div style="font-size:13px;color:var(--ink2);line-height:1.6">"${r.good}"</div>`:''}
-          </div>`).join('')}
-        </div>
+        <div class="card-hd"><div class="card-t">💬 수강생 후기</div><div style="font-size:14px;font-weight:800;color:var(--am)">${avg}★</div></div>
+        <div class="card-bd">${topRvs.map(r=>`<div style="padding:14px;background:var(--bg2);border-radius:12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <div><span style="font-size:13px;font-weight:700;color:var(--ink)">${r.name||'익명'}</span>${r.org?`<span style="font-size:11px;color:var(--ink3);margin-left:8px">${r.org}</span>`:''}</div>
+            <span style="color:var(--am);font-size:13px">${'★'.repeat(r.rating||5)}</span>
+          </div>
+          ${r.good?`<div style="font-size:13px;color:var(--ink2);line-height:1.6">"${r.good}"</div>`:''}
+        </div>`).join('')}</div>
       </div>`:''}
 
-      <!-- ④ 강의료 -->
+      <!-- ⑤ 강의료 -->
       <div class="card" style="margin-bottom:14px">
         <div class="card-hd"><div class="card-t">💰 강의료</div></div>
         <div class="card-bd">
-          ${sc.fee?`
-          <div style="text-align:center;padding:16px 0">
+          ${sc.fee?`<div style="text-align:center;padding:16px 0">
             <div style="font-size:32px;font-weight:800;color:var(--ink);letter-spacing:-1px">${parseInt(sc.fee).toLocaleString()}원</div>
             <div style="font-size:13px;color:var(--ink3);margin-top:6px">부가세 별도 · 협의 가능</div>
-          </div>`:`
-          <div style="text-align:center;padding:16px 0;color:var(--ink3)">
+          </div>`:`<div style="text-align:center;padding:16px 0;color:var(--ink3)">
             <div style="font-size:14px;font-weight:600;margin-bottom:4px">강의 규모와 내용에 따라 협의</div>
             <div style="font-size:12px">아래 연락처로 문의해 주세요</div>
           </div>`}
         </div>
       </div>
 
-      <!-- ⑤ 강사 프로필 -->
+      <!-- ⑥ 강사 프로필 -->
       <div class="card" style="margin-bottom:14px">
         <div class="card-hd"><div class="card-t">👤 강사 프로필</div></div>
         <div class="card-bd">
@@ -2580,19 +2732,20 @@ async function loadProposalPage(scheduleId){
         </div>
       </div>
 
-      <!-- ⑥ 연락처 + SNS -->
+      <!-- ⑦ 문의하기 -->
       <div class="card" style="margin-bottom:32px">
         <div class="card-hd"><div class="card-t">📞 문의하기</div></div>
         <div class="card-bd">
           ${p.email?`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid var(--border)"><span style="font-size:13px;color:var(--ink3);width:50px">이메일</span><a href="mailto:${p.email}" style="font-size:13px;font-weight:600;color:var(--pu);text-decoration:none">${p.email}</a></div>`:''}
           ${snsMap?`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">${snsMap}</div>`:''}
           <div style="margin-top:16px;padding:14px;background:var(--bg2);border-radius:12px;text-align:center">
-            <div style="font-size:12px;color:var(--ink3);line-height:1.7">이 제안서는 <strong style="color:var(--ink)">AfterClass</strong>로 만들어졌어요<br>강의 문의 · 커리큘럼 조정 · 일정 협의 언제든지 환영합니다</div>
+            <div style="font-size:12px;color:var(--ink3);line-height:1.7">이 제안서는 <strong style="color:var(--ink)">AfterClass</strong>로 만들어졌어요</div>
           </div>
         </div>
       </div>
     </div>`;
 }
+
 (async()=>{
   const params=new URLSearchParams(location.search);
 
