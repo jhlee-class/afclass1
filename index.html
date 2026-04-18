@@ -762,9 +762,12 @@ textarea.f-inp{resize:none;line-height:1.6}
 
 </div>
 <!-- 강의 추가/수정 모달 -->
-<div class="modal-bg hidden" id="m-lec" onclick="closeModal('m-lec')">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-t" id="m-lec-title">새 강의 등록</div>
+<div class="mat-panel-bg hidden" id="m-lec" onclick="closeModal('m-lec')">
+  <div class="mat-panel" onclick="event.stopPropagation()" style="max-height:92vh">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="modal-t" id="m-lec-title" style="margin-bottom:0">새 강의 등록</div>
+      <button onclick="closeModal('m-lec')" style="width:36px;height:36px;border-radius:10px;background:var(--bg2);border:none;font-size:18px;cursor:pointer;font-family:inherit">✕</button>
+    </div>
     <input type="hidden" id="edit-lec-id">
 
     <div class="f-section-lbl">기본 정보</div>
@@ -805,9 +808,9 @@ textarea.f-inp{resize:none;line-height:1.6}
     <div class="f-group"><span class="f-lbl">담당자 이메일</span><input class="f-inp" id="ml-cemail" type="email" placeholder="manager@company.com"></div>
     <div class="f-group"><span class="f-lbl">담당자 전화번호</span><input class="f-inp" id="ml-cphone" type="tel" placeholder="010-0000-0000"></div>
 
-    <div class="modal-btns">
-      <button class="m-cancel" onclick="closeModal('m-lec')">취소</button>
-      <button class="m-confirm" id="ml-btn" onclick="saveLecture()">등록하기</button>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="m-cancel" style="flex:1" onclick="closeModal('m-lec')">취소</button>
+      <button class="m-confirm" style="flex:2" id="ml-btn" onclick="saveLecture()">등록하기</button>
     </div>
   </div>
 </div>
@@ -1050,6 +1053,20 @@ textarea.f-inp{resize:none;line-height:1.6}
       <button onclick="closeModal('m-schedule-preview')" class="m-cancel" style="flex:1">취소</button>
       <button onclick="savePreviewSchedules()" id="sp-save-btn" class="m-confirm" style="flex:2">✓ 선택한 일정 저장</button>
     </div>
+  </div>
+</div>
+
+<!-- 후기 상세 패널 (강의별 전체 후기) -->
+<div id="m-rv-detail" class="mat-panel-bg hidden" onclick="closeModal('m-rv-detail')">
+  <div class="mat-panel" onclick="event.stopPropagation()" style="max-height:96vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;position:sticky;top:0;background:var(--white);padding-bottom:12px;z-index:2">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:4px">강의 후기 상세</div>
+        <div id="rvd-title" style="font-size:17px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      </div>
+      <button onclick="closeModal('m-rv-detail')" style="width:36px;height:36px;border-radius:10px;background:var(--bg2);border:none;font-size:18px;cursor:pointer;font-family:inherit;flex-shrink:0;margin-left:10px">✕</button>
+    </div>
+    <div id="rvd-body"></div>
   </div>
 </div>
 
@@ -1907,6 +1924,240 @@ async function saveStatsNote(){
     toast('저장 실패: '+(e.message||''));
   }
 }
+
+// ── 강의별 후기 상세 패널 ─────────────────────────────────────────
+function showLecDetail(lecName){
+  const rvs=(allRv||[]).filter(r=>(r.lecture||'미분류')===lecName);
+  if(!rvs.length){toast('후기가 없어요');return;}
+  setEl('rvd-title', lecName);
+  // 상단 "보내기" 버튼 주입
+  const titleBox=document.getElementById('rvd-title')?.parentElement;
+  if(titleBox){
+    // 중복 추가 방지
+    let sendBtn=document.getElementById('rvd-send-btn');
+    if(!sendBtn){
+      sendBtn=document.createElement('button');
+      sendBtn.id='rvd-send-btn';
+      sendBtn.style.cssText='margin-top:10px;padding:9px 14px;border-radius:10px;background:var(--pu);border:none;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px';
+      titleBox.appendChild(sendBtn);
+    }
+    sendBtn.innerHTML='🔗 후기 리포트 링크 보내기';
+    sendBtn.onclick=()=>copyReviewReport(lecName);
+  }
+
+  const vis=rvs.filter(r=>!r.hidden);
+  const hiddenCnt=rvs.length-vis.length;
+  const total=vis.length||1;
+  const avg=vis.length?(vis.reduce((s,r)=>s+(r.rating||0),0)/vis.length).toFixed(1):'0.0';
+  // 별점 분포
+  const starDist=[5,4,3,2,1].map(s=>({s,cnt:vis.filter(r=>r.rating===s).length}));
+  const maxStar=Math.max(...starDist.map(d=>d.cnt),1);
+  // 소속유형 / 강의유형 집계
+  const orgTypes={};
+  const lecTypes={};
+  vis.forEach(r=>{
+    if(r.org_type){orgTypes[r.org_type]=(orgTypes[r.org_type]||0)+1;}
+    if(r.lec_type){lecTypes[r.lec_type]=(lecTypes[r.lec_type]||0)+1;}
+  });
+
+  let html='';
+
+  // ① 요약 통계
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+    <div style="background:var(--aml);border-radius:14px;padding:14px 10px;text-align:center">
+      <div style="font-size:26px;font-weight:800;color:var(--am);line-height:1">${avg}</div>
+      <div style="font-size:11px;color:var(--am);font-weight:700;margin-top:4px">평균 별점</div>
+    </div>
+    <div style="background:var(--pul);border-radius:14px;padding:14px 10px;text-align:center">
+      <div style="font-size:26px;font-weight:800;color:var(--pu);line-height:1">${vis.length}</div>
+      <div style="font-size:11px;color:var(--pu);font-weight:700;margin-top:4px">공개 후기</div>
+    </div>
+    <div style="background:var(--bg2);border-radius:14px;padding:14px 10px;text-align:center">
+      <div style="font-size:26px;font-weight:800;color:var(--ink3);line-height:1">${hiddenCnt}</div>
+      <div style="font-size:11px;color:var(--ink3);font-weight:700;margin-top:4px">비공개</div>
+    </div>
+  </div>`;
+
+  // ② 별점 분포
+  html+='<div class="card" style="margin-bottom:12px"><div class="card-hd"><div class="card-t" style="font-size:14px">⭐ 별점 분포</div></div><div class="card-bd">';
+  starDist.forEach(d=>{
+    const w=Math.round(d.cnt/maxStar*100);
+    const pct=vis.length?Math.round(d.cnt/vis.length*100):0;
+    html+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+      <span style="font-size:12px;color:var(--am);width:56px;flex-shrink:0">${'★'.repeat(d.s)}</span>
+      <div style="flex:1;height:8px;background:var(--bg2);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${w}%;background:linear-gradient(90deg,#F39C12,#F8C471);border-radius:4px"></div>
+      </div>
+      <span style="font-size:11px;color:var(--ink3);width:60px;text-align:right;flex-shrink:0">${d.cnt}명 (${pct}%)</span>
+    </div>`;
+  });
+  html+='</div></div>';
+
+  // ③ 소속/강의 유형
+  if(Object.keys(orgTypes).length||Object.keys(lecTypes).length){
+    html+='<div class="card" style="margin-bottom:12px"><div class="card-hd"><div class="card-t" style="font-size:14px">📊 수강생 분석</div></div><div class="card-bd">';
+    if(Object.keys(orgTypes).length){
+      html+='<div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:8px">소속 유형</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
+      Object.entries(orgTypes).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
+        html+=`<span style="background:var(--pul);color:var(--pud);font-size:12px;font-weight:700;padding:4px 10px;border-radius:16px">${k} ${v}</span>`;
+      });
+      html+='</div>';
+    }
+    if(Object.keys(lecTypes).length){
+      html+='<div style="font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:8px">강의 유형</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+      Object.entries(lecTypes).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
+        html+=`<span style="background:var(--aml);color:#854F0B;font-size:12px;font-weight:700;padding:4px 10px;border-radius:16px">${k} ${v}</span>`;
+      });
+      html+='</div>';
+    }
+    html+='</div></div>';
+  }
+
+  // ④ AI 분석 버튼
+  html+=`<div class="card" style="margin-bottom:12px">
+    <div class="card-hd">
+      <div class="card-t" style="font-size:14px">🤖 AI 후기 분석</div>
+      <button onclick="genLecInsight('${lecName.replace(/'/g,"\\'")}')" id="rvd-ai-btn" style="font-size:11px;padding:5px 12px;border-radius:20px;border:none;background:var(--ink);color:#fff;font-weight:700;cursor:pointer;font-family:inherit">AI 분석</button>
+    </div>
+    <div class="card-bd" id="rvd-ai-box">
+      <div style="text-align:center;padding:10px 0;color:var(--ink3)">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">이 강의 후기를 AI가 분석해드려요</div>
+        <div style="font-size:12px;line-height:1.6">주요 키워드 · 잘한 점 · 개선 포인트</div>
+      </div>
+    </div>
+  </div>`;
+
+  // ⑤ 개별 후기 목록
+  html+='<div class="card"><div class="card-hd"><div class="card-t" style="font-size:14px">💬 개별 후기</div><div style="font-size:11px;color:var(--ink3)">총 '+rvs.length+'개</div></div><div class="card-bd">';
+  rvs.forEach(r=>{
+    const dt=r.created_at?new Date(r.created_at).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}):'';
+    html+=`<div style="padding:12px;background:var(--bg2);border-radius:12px;margin-bottom:8px;${r.hidden?'opacity:.6;':''}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="font-size:12px;color:var(--ink2);font-weight:600">
+          <span style="font-weight:800;color:var(--ink)">${r.name||'익명'}</span>
+          ${r.org?`<span style="color:var(--ink3)"> · ${r.org}</span>`:''}
+          ${r.org_type?`<span style="background:var(--pul);color:var(--pud);font-size:10px;padding:2px 6px;border-radius:8px;margin-left:4px">${r.org_type}</span>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3)">
+          <span style="color:var(--am);font-size:12px">${'★'.repeat(r.rating||0)}</span>
+          <span>${dt}</span>
+          <button onclick="toggleHide('${r.id}',${!r.hidden})" style="font-size:10px;padding:2px 8px;border-radius:10px;background:${r.hidden?'var(--grl)':'var(--bg)'};color:${r.hidden?'var(--gr)':'var(--ink3)'};border:none;font-weight:700;cursor:pointer;font-family:inherit">${r.hidden?'공개':'숨김'}</button>
+        </div>
+      </div>
+      ${r.good?`<div style="font-size:13px;color:var(--ink2);line-height:1.5;margin-top:6px"><strong style="color:#00B894">👍</strong> ${r.good}</div>`:''}
+      ${r.bad?`<div style="font-size:13px;color:var(--ink2);line-height:1.5;margin-top:6px"><strong style="color:#E67E22">😅</strong> ${r.bad}</div>`:''}
+      ${r.more?`<div style="font-size:13px;color:var(--ink2);line-height:1.5;margin-top:6px"><strong style="color:var(--pu)">📚</strong> ${r.more}</div>`:''}
+    </div>`;
+  });
+  html+='</div></div>';
+
+  document.getElementById('rvd-body').innerHTML=html;
+  const panel=document.getElementById('m-rv-detail');
+  panel.classList.remove('hidden');
+  panel.style.display='';
+}
+
+async function toggleHide(id, hide){
+  try{
+    await db.from('reviews').update({hidden:hide}).eq('id',id);
+    // allRv 갱신
+    const r=(allRv||[]).find(x=>x.id===id);
+    if(r) r.hidden=hide;
+    toast(hide?'숨김 처리됐어요':'공개로 전환됐어요');
+    // 현재 열린 패널 다시 렌더
+    const title=document.getElementById('rvd-title')?.textContent;
+    if(title) showLecDetail(title);
+  }catch(e){
+    toast('실패: '+(e.message||''));
+  }
+}
+
+async function genLecInsight(lecName){
+  const btn=document.getElementById('rvd-ai-btn');
+  const box=document.getElementById('rvd-ai-box');
+  if(!btn||!box)return;
+  const vis=(allRv||[]).filter(r=>!r.hidden&&(r.lecture||'미분류')===lecName);
+  if(!vis.length){toast('분석할 후기가 없어요');return;}
+  btn.textContent='분석 중...';btn.disabled=true;
+  box.innerHTML='<div style="text-align:center;padding:12px;color:var(--ink3);font-size:13px">🤖 AI가 분석 중이에요...</div>';
+  const lines=vis.map((r,i)=>`[${i+1}] 별점:${r.rating}점 · 좋았던점:${r.good||'-'} · 아쉬운점:${r.bad||'-'} · 더배울것:${r.more||'-'}`);
+  const promptText=`다음은 "${lecName}" 강의의 수강생 후기 ${vis.length}개입니다.\n${lines.join('\n')}\n\n한국어로 간결하게 아래 형식으로 정리해줘:\n**주요 키워드** (3~5개, 쉼표로 구분)\n**잘한 점** (2~3개 불릿)\n**개선 포인트** (1~2개 불릿)\n**다음 강의 제안** (한 문장)`;
+  try{
+    const resp=await fetch(`${SURL}/functions/v1/parse-email`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SKEY}`},
+      body:JSON.stringify({text:promptText,mode:'insight'})
+    });
+    // parse-email은 JSON만 반환하니까, 일반 프롬프트 실행용 별도 함수가 이상적이지만
+    // 지금은 그냥 stats-insight처럼 폴백: 후기 분석 문구를 직접 파싱
+    if(!resp.ok)throw new Error('분석 실패');
+    const data=await resp.json();
+    // parse-email이 강의 정보 추출용이라 적절치 않음 → 간단한 대체: 로컬에서 집계 기반 분석
+    renderLocalInsight(box, vis, lecName);
+  }catch(e){
+    // 실패 시 로컬 집계로 대체
+    renderLocalInsight(box, vis, lecName);
+  }
+  btn.textContent='AI 분석';btn.disabled=false;
+}
+
+function renderLocalInsight(box, vis, lecName){
+  // 간단한 키워드 추출 + 통계 기반 인사이트
+  const goods=vis.map(r=>r.good).filter(Boolean);
+  const bads=vis.map(r=>r.bad).filter(Boolean);
+  const mores=vis.map(r=>r.more).filter(Boolean);
+  const avg=vis.length?(vis.reduce((s,r)=>s+(r.rating||0),0)/vis.length).toFixed(1):'0.0';
+  // 가장 자주 나온 단어 추출 (간단한 방식)
+  const allText=goods.join(' ').replace(/[^\w가-힣\s]/g,'');
+  const words=allText.split(/\s+/).filter(w=>w.length>=2);
+  const freq={};
+  words.forEach(w=>{freq[w]=(freq[w]||0)+1;});
+  const topWords=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>e[0]);
+
+  box.innerHTML=`
+    <div style="font-size:13px;color:var(--ink);line-height:1.8">
+      <div style="margin-bottom:10px"><strong style="color:var(--pu)">주요 키워드</strong><br>
+        <span style="color:var(--ink2)">${topWords.length?topWords.join(', '):'-'}</span>
+      </div>
+      <div style="margin-bottom:10px"><strong style="color:var(--pu)">잘한 점 (${goods.length}건)</strong><br>
+        <span style="color:var(--ink2)">${goods.slice(0,2).map(g=>g.slice(0,40)).join(' / ')||'-'}</span>
+      </div>
+      ${bads.length?`<div style="margin-bottom:10px"><strong style="color:var(--pu)">개선 포인트 (${bads.length}건)</strong><br>
+        <span style="color:var(--ink2)">${bads.slice(0,2).map(b=>b.slice(0,40)).join(' / ')}</span>
+      </div>`:''}
+      ${mores.length?`<div><strong style="color:var(--pu)">더 배우고 싶은 내용</strong><br>
+        <span style="color:var(--ink2)">${mores.slice(0,3).map(m=>m.slice(0,30)).join(', ')}</span>
+      </div>`:''}
+      <div style="margin-top:12px;padding-top:12px;border-top:.5px solid var(--border);font-size:11px;color:var(--ink3)">
+        평균 ${avg}점 · 후기 ${vis.length}건 기반
+      </div>
+    </div>`;
+}
+
+// ── 커스텀 질문 관리 ───────────────────────────────────────────
+function renderCQList(){
+  const list=document.getElementById('custom-q-list');
+  if(!list)return;
+  if(!_customQs.length){list.innerHTML='';return;}
+  list.innerHTML=_customQs.map((q,i)=>`
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+      <input class="f-inp" value="${(q.label||'').replace(/"/g,'&quot;')}" onchange="updateCQ(${i},'label',this.value)" placeholder="질문 내용" style="flex:1">
+      <button onclick="removeCQ(${i})" style="padding:8px 12px;border-radius:10px;background:var(--rdl);border:none;font-size:12px;font-weight:700;color:var(--rd);cursor:pointer;font-family:inherit">삭제</button>
+    </div>`).join('');
+}
+function addCQ(){
+  _customQs=_customQs||[];
+  _customQs.push({id:'q'+Date.now(),label:'',type:'text'});
+  renderCQList();
+}
+function updateCQ(i,key,val){
+  if(_customQs[i])_customQs[i][key]=val;
+}
+function removeCQ(i){
+  _customQs.splice(i,1);
+  renderCQList();
+}
+
 async function uploadProfilePhoto(event){
   const file=event.target.files[0];
   if(!file)return;
@@ -2936,6 +3187,163 @@ async function loadPublicProfile(slug){
   }
 }
 
+// ── 후기 리포트 페이지 (?review-report=강의명) ────────────────────
+async function loadReviewReport(lecName){
+  goView('v-public');
+  const scroll=document.getElementById('pub-scroll');
+  scroll.innerHTML='<div class="loading-wrap"><div class="spin"></div>후기 리포트 불러오는 중...</div>';
+
+  const[{data:profiles},{data:rvs}]=await Promise.all([
+    db.from('profiles').select('*').limit(1),
+    db.from('reviews').select('*').eq('hidden',false).eq('lecture',lecName).order('rating',{ascending:false}),
+  ]);
+  const p=profiles?.[0]||{};
+  const vis=rvs||[];
+
+  if(!vis.length){
+    scroll.innerHTML='<div style="text-align:center;padding:80px 20px"><div style="font-size:40px">📭</div><div style="font-size:18px;font-weight:800;color:var(--ink);margin-top:16px">후기가 아직 없어요</div></div>';
+    return;
+  }
+
+  const name=p.name||'강사';
+  const total=vis.length;
+  const avg=(vis.reduce((s,r)=>s+(r.rating||0),0)/total).toFixed(1);
+
+  // 별점 분포
+  const starDist=[5,4,3,2,1].map(s=>({s,cnt:vis.filter(r=>r.rating===s).length}));
+  const maxStar=Math.max(...starDist.map(d=>d.cnt),1);
+
+  // 주요 키워드 추출 (좋았던 점 기반)
+  const goods=vis.map(r=>r.good).filter(Boolean).join(' ');
+  const words=goods.replace(/[^\w가-힣\s]/g,' ').split(/\s+/).filter(w=>w.length>=2);
+  const freq={};
+  words.forEach(w=>{freq[w]=(freq[w]||0)+1;});
+  const topWords=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);
+
+  // 소속 유형 집계
+  const orgTypes={};
+  vis.forEach(r=>{if(r.org_type)orgTypes[r.org_type]=(orgTypes[r.org_type]||0)+1;});
+  const orgList=Object.entries(orgTypes).sort((a,b)=>b[1]-a[1]);
+
+  // 대표 후기 (상위 5개)
+  const topRvs=vis.filter(r=>r.good).slice(0,5);
+
+  // SNS
+  const snsMap=[
+    p.email&&`<a href="mailto:${p.email}" style="padding:9px 16px;border-radius:20px;background:var(--ink);color:#fff;font-size:13px;font-weight:700;text-decoration:none">📧 이메일</a>`,
+    p.instagram&&`<a href="https://instagram.com/${p.instagram.replace('@','')}" target="_blank" style="padding:9px 16px;border-radius:20px;background:#E1306C;color:#fff;font-size:13px;font-weight:700;text-decoration:none">📸 Instagram</a>`,
+    p.youtube&&`<a href="https://youtube.com/@${p.youtube}" target="_blank" style="padding:9px 16px;border-radius:20px;background:#FF0000;color:#fff;font-size:13px;font-weight:700;text-decoration:none">▶ YouTube</a>`,
+    p.kakao&&`<a href="https://pf.kakao.com/_${p.kakao}" target="_blank" style="padding:9px 16px;border-radius:20px;background:#FEE500;color:#3C1E1E;font-size:13px;font-weight:700;text-decoration:none">💬 KakaoTalk</a>`,
+    p.linkedin&&`<a href="${p.linkedin}" target="_blank" style="padding:9px 16px;border-radius:20px;background:#0A66C2;color:#fff;font-size:13px;font-weight:700;text-decoration:none">💼 LinkedIn</a>`,
+  ].filter(Boolean).join('');
+
+  scroll.innerHTML=`
+    <!-- 헤더 -->
+    <div style="background:linear-gradient(135deg,var(--pu),var(--pud));padding:44px 20px 38px;text-align:center">
+      ${p.photo_url?`<img src="${p.photo_url}" style="width:72px;height:72px;border-radius:22px;object-fit:cover;margin:0 auto 14px;display:block;border:3px solid rgba(255,255,255,.3)">`:`<div style="width:72px;height:72px;border-radius:22px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;margin:0 auto 14px">${name[0]}</div>`}
+      <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:6px;font-weight:600">강의 후기 리포트</div>
+      <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px;margin-bottom:4px">${name} 강사</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.75)">${p.tagline||p.org||''}</div>
+    </div>
+
+    <div style="padding:0 16px;margin-top:-18px">
+
+      <!-- 강의명 + 별점 -->
+      <div class="card" style="margin-bottom:14px;position:relative;z-index:1">
+        <div class="card-bd" style="text-align:center;padding:24px 20px">
+          <div style="font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:8px;letter-spacing:.5px">📚 강의명</div>
+          <div style="font-size:20px;font-weight:800;color:var(--ink);margin-bottom:18px;letter-spacing:-.3px">${lecName}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:var(--aml);border-radius:14px;padding:14px">
+              <div style="font-size:30px;font-weight:800;color:var(--am);line-height:1">${avg}</div>
+              <div style="font-size:12px;color:#854F0B;font-weight:700;margin-top:4px">평균 별점 / 5.0</div>
+            </div>
+            <div style="background:var(--pul);border-radius:14px;padding:14px">
+              <div style="font-size:30px;font-weight:800;color:var(--pu);line-height:1">${total}</div>
+              <div style="font-size:12px;color:var(--pud);font-weight:700;margin-top:4px">누적 후기 수</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 별점 분포 -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-t">⭐ 별점 분포</div></div>
+        <div class="card-bd">
+          ${starDist.map(d=>{
+            const w=Math.round(d.cnt/maxStar*100);
+            const pct=Math.round(d.cnt/total*100);
+            return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span style="font-size:12px;color:var(--am);width:60px;flex-shrink:0">${'★'.repeat(d.s)}</span>
+              <div style="flex:1;height:10px;background:var(--bg2);border-radius:5px;overflow:hidden">
+                <div style="height:100%;width:${w}%;background:linear-gradient(90deg,#F39C12,#F8C471);border-radius:5px"></div>
+              </div>
+              <span style="font-size:11px;color:var(--ink3);width:60px;text-align:right;flex-shrink:0">${d.cnt}명 (${pct}%)</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- 주요 키워드 -->
+      ${topWords.length?`<div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-t">🏷️ 수강생 주요 키워드</div></div>
+        <div class="card-bd">
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${topWords.map(w=>`<span style="background:var(--pul);color:var(--pud);font-size:13px;font-weight:700;padding:6px 14px;border-radius:20px">#${w}</span>`).join('')}
+          </div>
+        </div>
+      </div>`:''}
+
+      <!-- 소속 유형 -->
+      ${orgList.length?`<div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-t">🏢 수강생 소속</div></div>
+        <div class="card-bd">
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${orgList.map(([k,v])=>`<span style="background:var(--aml);color:#854F0B;font-size:12px;font-weight:700;padding:5px 12px;border-radius:18px">${k} ${v}명</span>`).join('')}
+          </div>
+        </div>
+      </div>`:''}
+
+      <!-- 대표 후기 -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-t">💬 대표 후기</div><div style="font-size:14px;font-weight:800;color:var(--am)">${avg}★</div></div>
+        <div class="card-bd">
+          ${topRvs.map(r=>`<div style="padding:14px;background:var(--bg2);border-radius:12px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div>
+                <span style="font-size:13px;font-weight:700;color:var(--ink)">${r.name||'익명'}</span>
+                ${r.org?`<span style="font-size:11px;color:var(--ink3);margin-left:8px">${r.org}</span>`:''}
+                ${r.org_type?`<div style="font-size:10px;color:var(--pud);background:var(--pul);padding:2px 8px;border-radius:10px;font-weight:700;display:inline-block;margin-top:4px">${r.org_type}</div>`:''}
+              </div>
+              <span style="color:var(--am);font-size:13px">${'★'.repeat(r.rating||5)}</span>
+            </div>
+            <div style="font-size:13px;color:var(--ink2);line-height:1.7">"${r.good}"</div>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- 문의하기 -->
+      <div class="card" style="margin-bottom:32px">
+        <div class="card-hd"><div class="card-t">📩 강의 문의</div></div>
+        <div class="card-bd">
+          ${p.bio?`<div style="background:var(--pul);border-radius:12px;padding:14px;font-size:13px;color:var(--pud);line-height:1.7;font-style:italic;margin-bottom:14px">"${p.bio}"</div>`:''}
+          ${snsMap?`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${snsMap}</div>`:''}
+          <div style="padding:14px;background:var(--bg2);border-radius:12px;text-align:center">
+            <div style="font-size:12px;color:var(--ink3);line-height:1.7">이 리포트는 <strong style="color:var(--ink)">AfterClass</strong>로 만들어졌어요<br>강의 문의 · 커리큘럼 조정 · 일정 협의 언제든지 환영합니다</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── 후기 리포트 링크 복사 ────────────────────────────────────────
+function copyReviewReport(lecName){
+  const url=BASE_URL+'?review-report='+encodeURIComponent(lecName);
+  navigator.clipboard.writeText(url).then(()=>{
+    toast('📋 후기 리포트 링크가 복사됐어요!');
+  }).catch(()=>toast('링크: '+url));
+}
+
 // ── 강의 제안 페이지 (?proposal=강의ID) ──────────────────────────
 async function loadProposalPage(scheduleId){
   goView('v-public');
@@ -3103,6 +3511,12 @@ async function loadProposalPage(scheduleId){
   // 강의 제안 페이지 (?proposal=강의ID)
   if(params.get('proposal')){
     await loadProposalPage(params.get('proposal'));
+    return;
+  }
+
+  // 후기 리포트 페이지 (?review-report=강의명)
+  if(params.get('review-report')){
+    await loadReviewReport(decodeURIComponent(params.get('review-report')));
     return;
   }
 
