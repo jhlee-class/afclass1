@@ -1103,7 +1103,10 @@ function goView(id){
 }
 function toast(msg){const el=document.getElementById('toast-el');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
 function openModal(id,data){
-  document.getElementById(id).classList.remove('hidden');
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.classList.remove('hidden');
+  el.style.display='';  // closeModal에서 none으로 설정한 것 초기화
   if(id==='m-lec'){
     const isEdit=data&&data.id;
     setEl('m-lec-title',isEdit?'강의 수정':'새 강의 등록');
@@ -1114,7 +1117,12 @@ function openModal(id,data){
     fields.forEach(f=>{const el=document.getElementById('ml-'+f);if(el)el.value=vals[f];});
   }
 }
-function closeModal(id){document.getElementById(id).classList.add('hidden');}
+function closeModal(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.classList.add('hidden');
+  el.style.display='none';
+}
 function showConfirm(id,cb){
   pendingDelId=id;
   document.getElementById('confirm-box').classList.remove('hidden');
@@ -1630,7 +1638,9 @@ async function uploadMat(){
         file_type:'link/'+_linkType, downloads:0
       }]);
       if(error){console.error('link insert error:',error);throw error;}
-      closeModal('m-mat');
+      // 패널 닫기
+      document.getElementById('m-mat').style.display='none';
+      document.getElementById('m-mat').classList.add('hidden');
       window._allMats=[];
       await switchTab('materials',null);
       toast((linkIcons[_linkType]||'🔗')+' 링크가 등록됐어요 ✅');
