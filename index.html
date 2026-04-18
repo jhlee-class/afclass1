@@ -1622,23 +1622,21 @@ async function uploadMat(){
     if(!/^https?:\/\/.+/.test(url)){toast('올바른 URL을 입력해주세요 (https://...)');return;}
     btn.textContent='등록 중...';btn.disabled=true;
     try{
-      const{data:{user}}=await db.auth.getUser();
       const linkIcons={canva:'🎨',youtube:'▶',gdrive:'📂',notion:'📝',other:'🔗'};
       const{error}=await db.from('materials').insert([{
-        user_id:user?.id||null,
         title, lecture_title:lecTitle, description:desc,
         file_url:url, file_name:title,
         file_path:'', file_size:0,
         file_type:'link/'+_linkType, downloads:0
       }]);
-      if(error) throw error;
+      if(error){console.error('link insert error:',error);throw error;}
       closeModal('m-mat');
       window._allMats=[];
       await switchTab('materials',null);
-      toast(`${linkIcons[_linkType]||'🔗'} 링크가 등록됐어요 ✅`);
+      toast((linkIcons[_linkType]||'🔗')+' 링크가 등록됐어요 ✅');
     }catch(e){
       console.error(e);
-      toast('등록 실패: '+(e.message||'다시 시도해주세요'));
+      toast('등록 실패: '+(e.message||JSON.stringify(e)||'다시 시도해주세요'));
     }
     btn.textContent='링크 등록';btn.disabled=false;
     return;
@@ -1661,9 +1659,7 @@ async function uploadMat(){
     if(bar) bar.style.width='70%';
     if(progText) progText.textContent='정보 저장 중...';
     const{data:{publicUrl}}=db.storage.from('lecture-materials').getPublicUrl(path);
-    const{data:{user}}=await db.auth.getUser();
     const{error:dbErr}=await db.from('materials').insert([{
-      user_id:user?.id||null,
       title, lecture_title:lecTitle, description:desc,
       file_url:publicUrl, file_name:_selectedFile.name,
       file_path:path, file_size:_selectedFile.size,
