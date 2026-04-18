@@ -1470,6 +1470,71 @@ function downloadReviews(){
 let currentQRLec=null;
 let qrModalCol='#6C5CE7';
 
+// ── 강의 일정 렌더링 ──────────────────────────────────────────────
+function renderSchedules(sc, query){
+  const list = document.getElementById('sc-list');
+  if(!list) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  let filtered = sc;
+  if(query){
+    const q = query.toLowerCase();
+    filtered = sc.filter(s => (s.title||'').toLowerCase().includes(q) || (s.org||'').toLowerCase().includes(q));
+  }
+  if(!filtered.length){
+    list.innerHTML = '<div class="empty-s"><div class="es-ic">📅</div><div class="es-t">강의가 없어요</div><div class="es-d">+ 강의 추가 버튼으로 등록해보세요</div></div>';
+    return;
+  }
+  // 예정 / 완료 분리
+  const upcoming = filtered.filter(s => s.status === '예정').sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  const done     = filtered.filter(s => s.status !== '예정').sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const all = [...upcoming, ...done];
+
+  list.innerHTML = all.map(s => {
+    const lecD = new Date(s.date); const diffD = Math.ceil((lecD - today) / 86400000);
+    const dday = s.status==='예정' ? (diffD===0?'오늘!':diffD>0?'D-'+diffD:'D+'+Math.abs(diffD)) : '완료';
+    const dc   = s.status==='예정' ? (diffD===0?'var(--ac)':diffD<=3?'var(--am)':'var(--pu)') : 'var(--ink3)';
+    const mon  = s.date ? s.date.slice(5,7)+'월' : '';
+    const day  = s.date ? s.date.slice(8,10) : '';
+    const isUp = s.status === '예정';
+    return `<div class="lec-card ${isUp?'upcoming':'done'}">
+      <div class="lc-top">
+        <div class="lc-date"><div class="lc-day">${day}</div><div class="lc-mon">${mon}</div></div>
+        <div class="lc-info">
+          ${isUp?'<span class="lc-status up">예정</span>':'<span class="lc-status dn">완료</span>'}
+          <div class="lc-title">${s.title||''}</div>
+          <div class="lc-meta">${[s.org, s.location, s.time?(s.time+(s.end_time?'~'+s.end_time:'')):'', s.n?s.n+'명':''].filter(Boolean).join(' · ')}</div>
+          ${s.fee?`<div class="lc-fee">💰 ${parseInt(s.fee).toLocaleString()}원</div>`:''}
+        </div>
+        <div style="background:${dc}22;color:${dc};font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0">${dday}</div>
+      </div>
+      ${s.topics?`<div style="display:flex;flex-wrap:wrap;gap:5px;padding:0 16px 10px">${s.topics.split(',').filter(t=>t.trim()).map(t=>`<span style="font-size:11px;background:var(--pul);color:var(--pud);padding:3px 9px;border-radius:20px;font-weight:600">${t.trim()}</span>`).join('')}</div>`:''}
+      <div class="lc-actions">
+        <button class="lc-btn lc-btn-pu" onclick="openQRFor('${s.id}')">🔲 QR</button>
+        ${isUp?`<button class="lc-btn lc-btn-gr" onclick="completeLecture('${s.id}')">✓ 완료</button>`:''}
+        <button class="lc-btn lc-btn-out" onclick="openModal('m-lec',${JSON.stringify(s).replace(/"/g,'&quot;')})">✏️ 수정</button>
+        <button class="lc-btn lc-btn-rd" onclick="confirmDelete('${s.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function searchLectures(q){
+  renderSchedules(allSc, q);
+}
+
+async function completeLecture(id){
+  try{
+    await updateScField(id, {status:'완료'});
+    allSc = [];
+    const sc = await loadSc();
+    const q = document.getElementById('sc-search');
+    renderSchedules(sc, q ? q.value : '');
+    toast('강의를 완료 처리했어요 ✅');
+  }catch(e){
+    toast('오류: ' + (e.message||'다시 시도해주세요'));
+  }
+}
+
 async function openQRFor(lectureId){
   const sc=await loadSc();
   const lec=sc.find(function(s){return s.id===lectureId;});
