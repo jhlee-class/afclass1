@@ -1639,11 +1639,14 @@ async function uploadMat(){
       }]);
       if(error){console.error('link insert error:',error);throw error;}
       // 패널 닫기
-      document.getElementById('m-mat').style.display='none';
-      document.getElementById('m-mat').classList.add('hidden');
+      const matPanel = document.getElementById('m-mat');
+      matPanel.classList.add('hidden');
+      matPanel.style.display='none';
       window._allMats=[];
-      await switchTab('materials',null);
+      btn.textContent='링크 등록';btn.disabled=false;
       toast((linkIcons[_linkType]||'🔗')+' 링크가 등록됐어요 ✅');
+      // 강의자료 탭으로 이동
+      setTimeout(()=>switchTab('materials',null), 300);
     }catch(e){
       console.error(e);
       toast('등록 실패: '+(e.message||JSON.stringify(e)||'다시 시도해주세요'));
@@ -1677,11 +1680,14 @@ async function uploadMat(){
     }]);
     if(dbErr) throw dbErr;
     if(bar) bar.style.width='100%';
-    closeModal('m-mat');
+    const matPanel2 = document.getElementById('m-mat');
+    matPanel2.classList.add('hidden');
+    matPanel2.style.display='none';
     _selectedFile=null;
     window._allMats=[];
-    await switchTab('materials',null);
+    btn.textContent='업로드';btn.disabled=false;
     toast('자료가 업로드됐어요 ✅');
+    setTimeout(()=>switchTab('materials',null), 300);
   }catch(e){
     console.error('uploadMat error:',e);
     toast('업로드 실패: '+(e.message||'다시 시도해주세요'));
