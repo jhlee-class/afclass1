@@ -824,6 +824,67 @@ const MATS=[
 ];
 
 let allRv=[], allSc=[], lastCnt=0, newIds=new Set(), profile={}, qrCol='#6C5CE7', pendingDelId=null;
+let _rating=0, _orgType='기업', _customQs=[], _lecTitle='', _lecDate='', _lecOrg='';
+const ORG_TYPES=['기업','공공기관','대학·교육기관','병원·의료기관','협회·단체','기타'];
+const ORG_COLORS={'기업':'#6C5CE7','공공기관':'#00B894','대학·교육기관':'#F39C12','병원·의료기관':'#E74C3C','협회·단체':'#0984E3','기타':'#B2BEC3'};
+
+// ── 후기 플로우 함수들 ────────────────────────────────────────────
+function gotoStep(n){
+  ['rs1','rs2','rs3'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.classList.add('hidden');
+  });
+  const target=document.getElementById('rs'+n);
+  if(target) target.classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+
+function setStar(n){
+  _rating=n;
+  const hints=['','별로였어요','아쉬웠어요','보통이었어요','좋았어요','최고였어요!'];
+  document.querySelectorAll('.star').forEach((s,i)=>{
+    s.classList.toggle('on', i<n);
+  });
+  const hint=document.getElementById('star-hint');
+  if(hint) hint.textContent=hints[n]||'';
+}
+
+function selOrgType(btn, type){
+  _orgType=type;
+  document.querySelectorAll('.org-type-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+
+async function submitReview(){
+  if(!_rating){ toast('별점을 선택해주세요 ⭐'); return; }
+  const good=document.getElementById('f-good')?.value.trim();
+  if(!good){ toast('좋았던 점을 입력해주세요'); return; }
+  const btn=document.getElementById('submit-btn');
+  if(btn){ btn.textContent='제출 중...'; btn.disabled=true; }
+  const d={
+    lecture: _lecTitle,
+    lecture_title: _lecTitle,
+    rating: _rating,
+    org_type: _orgType,
+    name: document.getElementById('f-name')?.value.trim()||'',
+    org:  document.getElementById('f-org')?.value.trim()||'',
+    good: good,
+    bad:  document.getElementById('f-bad')?.value.trim()||'',
+    more: document.getElementById('f-more')?.value.trim()||'',
+    email:document.getElementById('f-email')?.value.trim()||'',
+    date: _lecDate,
+    hidden: false
+  };
+  try{
+    await insertRv(d);
+    gotoStep(3);
+  }catch(e){
+    toast('제출 실패: '+(e.message||'다시 시도해주세요'));
+    if(btn){ btn.textContent='후기 제출하기 →'; btn.disabled=false; }
+  }
+}
+
+function loadCustomQuestions(){ /* 커스텀 질문 로드 (프로필 설정 기반) */ }
 
 // ── API ──
 async function loadRv(){const{data}=await db.from('reviews').select('*').order('created_at',{ascending:false});allRv=data||[];return allRv;}
@@ -1712,6 +1773,8 @@ function authErrMsg(e){
     const lec=decodeURIComponent(params.get('lec')||'강의');
     const date=params.get('date')||'';
     const org=decodeURIComponent(params.get('org')||'');
+    // submitReview에서 사용할 전역 변수에 저장
+    _lecTitle=lec; _lecDate=date; _lecOrg=org;
     setEl('rvh-title',lec);
     setEl('rvh-meta',(date?date+' · ':'')+org+(org?' · ':'')+( profile.name||'이지훈')+' 강사');
     const sc=await loadSc();
