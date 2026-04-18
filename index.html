@@ -2061,7 +2061,6 @@ async function savePreviewSchedules(){
   };
   if(!common.title){toast('강의명을 입력해주세요');return;}
 
-  // 체크된 일정 수집
   const checks=document.querySelectorAll('.sp-date-check:checked');
   const tentative=document.getElementById('sp-tentative').checked;
   if(!checks.length&&!tentative){toast('저장할 일정을 하나 이상 체크해주세요');return;}
@@ -2070,28 +2069,49 @@ async function savePreviewSchedules(){
   btn.disabled=true;btn.textContent='저장 중...';
 
   try{
+    // user_id 가져오기
+    const{data:{user}}=await db.auth.getUser();
+    const userId=user?.id||null;
+
     const rows=[];
     checks.forEach(c=>{
       const idx=c.dataset.idx;
       const dEl=document.querySelector(`.sp-d-date[data-idx="${idx}"]`);
       const tsEl=document.querySelector(`.sp-d-ts[data-idx="${idx}"]`);
       const teEl=document.querySelector(`.sp-d-te[data-idx="${idx}"]`);
-      rows.push({...common, date:dEl.value, time:tsEl.value, end_time:teEl.value});
+      const row={...common, user_id:userId};
+      // 빈 값은 null로
+      const dateVal=dEl?.value||'';
+      const tsVal=tsEl?.value||'';
+      const teVal=teEl?.value||'';
+      row.date = dateVal || null;
+      row.time = tsVal || null;
+      row.end_time = teVal || null;
+      rows.push(row);
     });
     if(tentative){
-      rows.push({...common, date:'', time:'', end_time:''});
+      rows.push({...common, user_id:userId, date:null, time:null, end_time:null});
     }
-    // 사용자 ID 추가
-    const{data:{user}}=await db.auth.getUser();
-    rows.forEach(r=>{r.user_id=user?.id||null;});
-    const{error}=await db.from('schedules').insert(rows);
-    if(error) throw error;
-    closeModal('m-schedule-preview');
+
+    console.log('저장할 일정:', rows);
+    const{data,error}=await db.from('schedules').insert(rows).select();
+    if(error){
+      console.error('insert error:',error);
+      throw error;
+    }
+    console.log('저장 성공:', data);
+
+    // 성공
+    const panel=document.getElementById('m-schedule-preview');
+    panel.classList.add('hidden');
+    panel.style.display='none';
     toast(`✅ ${rows.length}개 일정이 저장됐어요`);
-    await switchTab('schedule',null);
+    // 캐시 초기화 후 일정 탭으로
+    window.allSc=[];
+    setTimeout(()=>switchTab('schedule',null), 200);
   }catch(e){
-    console.error(e);
-    toast('저장 실패: '+(e.message||''));
+    console.error('savePreviewSchedules error:',e);
+    toast('저장 실패: '+(e.message||JSON.stringify(e)||'다시 시도해주세요'));
   }
   btn.disabled=false;btn.textContent='✓ 선택한 일정 저장';
 }
