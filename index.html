@@ -666,10 +666,10 @@ textarea.f-inp{resize:none;line-height:1.6}
       <div style="padding:18px 20px" id="fgrp-email">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
           <div style="width:32px;height:32px;border-radius:10px;background:#E3F2FD;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📧</div>
-          <div><div style="font-size:13px;font-weight:800;color:var(--ink)">이메일</div><div style="font-size:11px;color:var(--ink3)">강의자료 수령 · 선택</div></div>
+          <div><div style="font-size:13px;font-weight:800;color:var(--ink)">이메일</div><div style="font-size:11px;color:var(--ac);font-weight:700">필수 항목</div></div>
         </div>
         <input class="f-inp" id="f-email" type="email" placeholder="example@company.com" style="background:var(--bg)">
-        <div style="font-size:11px;color:var(--ink3);margin-top:8px;line-height:1.6">강의자료와 다음 강의 소식을 보내드려요. 원하지 않으시면 비워두세요.</div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:8px;line-height:1.6">📧 강의자료와 다음 강의 소식을 이메일로 보내드려요.</div>
       </div>
     </div>
     <!-- 제출 버튼 -->
@@ -859,6 +859,9 @@ async function submitReview(){
   if(!_rating){ toast('별점을 선택해주세요 ⭐'); return; }
   const good=document.getElementById('f-good')?.value.trim();
   if(!good){ toast('좋았던 점을 입력해주세요'); return; }
+  const email=document.getElementById('f-email')?.value.trim();
+  if(!email){ toast('이메일을 입력해주세요 📧'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('올바른 이메일 형식을 입력해주세요'); return; }
   const btn=document.getElementById('submit-btn');
   if(btn){ btn.textContent='제출 중...'; btn.disabled=true; }
   const d={
