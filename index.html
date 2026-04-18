@@ -317,6 +317,15 @@ textarea.f-inp{resize:none;line-height:1.6}
 .toast{position:fixed;bottom:calc(96px + var(--sb));left:50%;transform:translateX(-50%) translateY(12px);background:#191F28;color:#fff;font-size:14px;font-weight:700;padding:13px 22px;border-radius:12px;z-index:400;opacity:0;transition:all .2s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25);letter-spacing:-.2px}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* ═══ 자료 업로드 패널 ═══ */
+.mat-panel-bg{position:fixed;inset:0;background:rgba(23,25,35,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+.mat-panel-bg.hidden{display:none}
+.mat-panel{background:var(--white);border-radius:24px 24px 0 0;padding:24px 20px calc(24px + var(--sb));width:100%;max-width:390px;max-height:92vh;overflow-y:auto}
+@media(min-width:768px){
+  .mat-panel-bg{align-items:stretch;justify-content:flex-end}
+  .mat-panel{border-radius:0;max-width:420px;width:420px;max-height:100vh;height:100%;padding:32px 28px}
+}
+
 @media(min-width:391px){body{background:#E5E8EB}.app{box-shadow:0 0 40px rgba(23,25,35,.08)}}
 
 /* ═══ LAYOUT — 모바일/PC 분기 ═══ */
@@ -784,28 +793,31 @@ textarea.f-inp{resize:none;line-height:1.6}
 
 
 <!-- 자료 업로드 모달 -->
-<div id="m-mat" class="modal-bg hidden" onclick="closeModal('m-mat')">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-t">자료 업로드</div>
+<div id="m-mat" class="mat-panel-bg hidden" onclick="closeModal('m-mat')">
+  <div class="mat-panel" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+      <div class="modal-t" style="margin-bottom:0">📁 자료 업로드</div>
+      <button onclick="closeModal('m-mat')" style="width:36px;height:36px;border-radius:10px;background:var(--bg2);border:none;font-size:18px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
     <div class="f-group"><span class="f-lbl">자료 제목 <span style="color:var(--ac)">*</span></span><input class="f-inp" id="mu-title" placeholder="예: AI 활용 실무 1강 자료"></div>
     <div class="f-group"><span class="f-lbl">관련 강의 <span style="color:var(--ink3);font-weight:400">(선택)</span></span><select class="f-inp" id="mu-lec" style="appearance:auto"></select></div>
     <div class="f-group"><span class="f-lbl">설명 <span style="color:var(--ink3);font-weight:400">(선택)</span></span><textarea class="f-inp" id="mu-desc" rows="2" placeholder="자료에 대한 간단한 설명"></textarea></div>
     <div class="f-group">
       <span class="f-lbl">파일 <span style="color:var(--ac)">*</span> <span style="color:var(--ink3);font-weight:400">(최대 50MB)</span></span>
       <input type="file" id="mu-file" style="display:none" onchange="onFileSelect(event)">
-      <div onclick="document.getElementById('mu-file').click()" style="padding:20px;border:2px dashed var(--border2);border-radius:12px;text-align:center;cursor:pointer;background:var(--bg)">
-        <div style="font-size:32px;margin-bottom:6px">📁</div>
-        <div style="font-size:13px;font-weight:700;color:var(--ink2)" id="mu-file-label">파일을 선택해주세요</div>
-        <div style="font-size:11px;color:var(--ink3);margin-top:4px">PDF, PPT, Excel, 이미지 등</div>
+      <div onclick="document.getElementById('mu-file').click()" style="padding:24px;border:2px dashed var(--border2);border-radius:14px;text-align:center;cursor:pointer;background:var(--bg);transition:border-color .15s" onmouseover="this.style.borderColor='var(--pu)'" onmouseout="this.style.borderColor='var(--border2)'">
+        <div style="font-size:32px;margin-bottom:8px">📁</div>
+        <div style="font-size:14px;font-weight:700;color:var(--ink2)" id="mu-file-label">파일을 선택하거나 드래그하세요</div>
+        <div style="font-size:12px;color:var(--ink3);margin-top:4px">PDF, PPT, Excel, 이미지 등 · 최대 50MB</div>
       </div>
-      <div id="mu-progress" style="display:none;margin-top:10px">
-        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div id="mu-progress-bar" style="height:100%;width:0%;background:var(--pu);transition:width .3s"></div></div>
-        <div id="mu-progress-text" style="font-size:11px;color:var(--ink3);margin-top:4px;text-align:center">업로드 중...</div>
+      <div id="mu-progress" style="display:none;margin-top:12px">
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div id="mu-progress-bar" style="height:100%;width:0%;background:var(--pu);transition:width .3s;border-radius:3px"></div></div>
+        <div id="mu-progress-text" style="font-size:12px;color:var(--ink3);margin-top:6px;text-align:center">업로드 중...</div>
       </div>
     </div>
-    <div class="modal-btns">
-      <button class="m-cancel" onclick="closeModal('m-mat')">취소</button>
-      <button class="m-confirm" id="mu-btn" onclick="uploadMat()">업로드</button>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="m-cancel" style="flex:1" onclick="closeModal('m-mat')">취소</button>
+      <button class="m-confirm" style="flex:2" id="mu-btn" onclick="uploadMat()">업로드</button>
     </div>
   </div>
 </div>
@@ -1500,7 +1512,109 @@ async function genAISummary(){
   btn.textContent='다시 생성';btn.disabled=false;
 }
 
-// ── 강의 상세 오버레이 ────────────────────────────────────────────
+// ── 강의자료 함수들 ────────────────────────────────────────────────
+let _selectedFile = null;
+
+function onFileSelect(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  _selectedFile = file;
+  const mb = (file.size/1024/1024).toFixed(1);
+  const label = document.getElementById('mu-file-label');
+  if(label) label.textContent = `✅ ${file.name} (${mb}MB)`;
+}
+
+async function loadMaterials(){
+  const{data}=await db.from('materials').select('*').order('created_at',{ascending:false});
+  window._allMats = data||[];
+  return window._allMats;
+}
+
+async function uploadMat(){
+  const title = document.getElementById('mu-title')?.value.trim();
+  const lecTitle = document.getElementById('mu-lec')?.value||'';
+  const desc = document.getElementById('mu-desc')?.value.trim()||'';
+  const btn = document.getElementById('mu-btn');
+  if(!title){toast('자료 제목을 입력해주세요');return;}
+  if(!_selectedFile){toast('파일을 선택해주세요');return;}
+  if(_selectedFile.size > 50*1024*1024){toast('파일 크기는 50MB 이하여야 해요');return;}
+
+  btn.textContent='업로드 중...';btn.disabled=true;
+  const prog = document.getElementById('mu-progress');
+  const bar = document.getElementById('mu-progress-bar');
+  const progText = document.getElementById('mu-progress-text');
+  if(prog) prog.style.display='block';
+
+  try{
+    // Supabase Storage 업로드
+    const ext = _selectedFile.name.split('.').pop();
+    const path = `materials/${Date.now()}_${_selectedFile.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    if(bar) bar.style.width='30%';
+    if(progText) progText.textContent='파일 업로드 중...';
+
+    const{data:upData, error:upErr} = await db.storage
+      .from('lecture-materials')
+      .upload(path, _selectedFile, {cacheControl:'3600', upsert:false});
+    if(upErr) throw upErr;
+
+    if(bar) bar.style.width='70%';
+    if(progText) progText.textContent='정보 저장 중...';
+
+    // Public URL 가져오기
+    const{data:{publicUrl}} = db.storage.from('lecture-materials').getPublicUrl(path);
+
+    // DB에 메타데이터 저장
+    const{error:dbErr} = await db.from('materials').insert([{
+      title, lecture_title:lecTitle, description:desc,
+      file_url:publicUrl, file_name:_selectedFile.name,
+      file_path:path, file_size:_selectedFile.size,
+      file_type:_selectedFile.type, downloads:0
+    }]);
+    if(dbErr) throw dbErr;
+
+    if(bar) bar.style.width='100%';
+    closeModal('m-mat');
+    _selectedFile=null;
+    window._allMats=[];
+    await switchTab('materials',null);
+    toast('자료가 업로드됐어요 ✅');
+  }catch(e){
+    console.error('uploadMat error:',e);
+    toast('업로드 실패: '+(e.message||'다시 시도해주세요'));
+    if(prog) prog.style.display='none';
+  }
+  btn.textContent='업로드';btn.disabled=false;
+}
+
+async function downloadMat(id, url, name){
+  try{
+    await db.from('materials').update({downloads: db.rpc ? undefined : 0}).eq('id',id);
+    // 다운로드 카운트 증가
+    const mat = (window._allMats||[]).find(m=>m.id===id);
+    if(mat){
+      await db.from('materials').update({downloads:(mat.downloads||0)+1}).eq('id',id);
+      mat.downloads=(mat.downloads||0)+1;
+    }
+  }catch(e){}
+  // 파일 다운로드
+  const a = document.createElement('a');
+  a.href = url; a.download = name||'download'; a.target='_blank';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast('다운로드를 시작했어요 ⬇');
+}
+
+async function deleteMat(id, path){
+  if(!confirm('이 자료를 삭제할까요?')) return;
+  try{
+    if(path) await db.storage.from('lecture-materials').remove([path]);
+    await db.from('materials').delete().eq('id',id);
+    window._allMats=[];
+    await switchTab('materials',null);
+    toast('자료가 삭제됐어요');
+  }catch(e){
+    toast('삭제 실패: '+(e.message||''));
+  }
+}
 window._scDetailId = null;
 let _scDetailSc = null;
 
@@ -1612,19 +1726,26 @@ async function saveScMemo(){
 }
 
 function openMatUpload(lecTitle){
-  // 강의자료 탭에서 업로드 시 해당 강의 미리 선택
-  closeScDetail();
-  openModal('m-mat', null);
-  setTimeout(()=>{
-    const sel = document.getElementById('mu-lec');
-    if(sel && lecTitle){
-      for(let i=0;i<sel.options.length;i++){
-        if(sel.options[i].text===lecTitle||sel.options[i].value===lecTitle){
-          sel.selectedIndex=i; break;
-        }
-      }
-    }
-  }, 100);
+  // 강의 목록을 드롭다운에 채우기
+  const sel = document.getElementById('mu-lec');
+  if(sel){
+    sel.innerHTML = '<option value="">강의 선택 (선택사항)</option>' +
+      allSc.map(s=>`<option value="${s.title}"${s.title===lecTitle?'selected':''}>${s.title} (${s.date||''})</option>`).join('');
+  }
+  // 파일 초기화
+  _selectedFile = null;
+  const label = document.getElementById('mu-file-label');
+  if(label) label.textContent='파일을 선택하거나 드래그하세요';
+  const prog = document.getElementById('mu-progress');
+  if(prog) prog.style.display='none';
+  const titleInp = document.getElementById('mu-title');
+  if(titleInp) titleInp.value='';
+  const descInp = document.getElementById('mu-desc');
+  if(descInp) descInp.value='';
+  // 강의 상세에서 열었으면 상세 닫기
+  if(lecTitle) closeScDetail();
+  // 패널 열기
+  document.getElementById('m-mat').classList.remove('hidden');
 }
 
 function confirmDelete(id){
