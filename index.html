@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>AfterClass</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --ink:#1A1A1A;--ink2:#4A4A4A;--ink3:#9A9A9A;
+  --bg:#F6F6F3;--white:#FFFFFF;
+  --border:#E5E3DC;--border2:#CCCAC2;
+  --pu:#6C5CE7;--pul:#F0EEFF;--pud:#4A3DB5;
+  --ac:#E8552D;--acl:#FEF0EB;
+  --gr:#00B894;--grl:#E6F9F5;
+  --am:#F39C12;--aml:#FEF5E4;
+  --sb:env(safe-area-inset-bottom,0px)
+}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#1A1A2E}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;width:100%;max-width:390px;margin:0 auto;background:var(--bg);position:relative;overflow:hidden}
+.view{display:none;flex:1;flex-direction:column;overflow:hidden}
+.view.active{display:flex}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ── SPLASH ── */
+.splash{background:var(--ink);flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;text-align:center}
+.splash-logo-wrap{width:80px;height:80px;background:var(--ac);border-radius:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px}
+.splash-logo-icon{font-size:36px}
+.splash-brand{font-size:32px;font-weight:800;color:#fff;letter-spacing:-1px;margin-bottom:8px}
+.splash-brand span{color:var(--ac)}
+.splash-tagline{font-size:15px;color:#888;line-height:1.7;margin-bottom:48px}
+.splash-features{display:flex;flex-direction:column;gap:14px;width:100%;margin-bottom:48px;text-align:left}
+.sf-item{display:flex;align-items:center;gap:14px;padding:14px 16px;background:rgba(255,255,255,.05);border-radius:14px;border:.5px solid rgba(255,255,255,.08)}
+.sf-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sf-text{flex:1}
+.sf-title{font-size:14px;font-weight:700;color:#fff}
+.sf-desc{font-size:12px;color:#666;margin-top:2px;line-height:1.4}
+.splash-btns{display:flex;flex-direction:column;gap:10px;width:100%}
+.sbtn{padding:15px;border-radius:16px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;border:none;width:100%}
+.sbtn-main{background:var(--ac);color:#fff}
+.sbtn-sub{background:rgba(255,255,255,.08);color:#bbb;border:.5px solid rgba(255,255,255,.12)}
+.splash-footer{margin-top:24px;font-size:12px;color:#444}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--white);border-bottom:.5px solid var(--border);padding:0 18px;display:flex;align-items:center;justify-content:space-between;height:52px;flex-shrink:0}
+.tb-logo{font-size:17px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+.tb-logo span{color:var(--ac)}
+.tb-right{display:flex;gap:8px;align-items:center}
+.tb-btn{height:34px;padding:0 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none}
+.tb-btn-out{background:var(--bg);color:var(--ink2);border:.5px solid var(--border2)}
+.tb-btn-fill{background:var(--ac);color:#fff}
+
+/* ── PROFILE HEADER ── */
+.prof-header{background:var(--ink);padding:20px 18px 20px;flex-shrink:0}
+.ph-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.av{width:46px;height:46px;border-radius:14px;background:var(--pu);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0}
+.ph-name{font-size:16px;font-weight:800;color:#fff}
+.ph-sub{font-size:12px;color:#777;margin-top:2px}
+.ph-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,.08);border-radius:14px;overflow:hidden}
+.ph-stat{background:rgba(255,255,255,.04);padding:12px 8px;text-align:center}
+.ph-sv{font-size:17px;font-weight:800;color:#fff}
+.ph-sl{font-size:10px;color:#666;margin-top:2px}
+
+/* ── TAB BAR ── */
+.tab-bar{background:var(--white);border-bottom:.5px solid var(--border);display:flex;overflow-x:auto;flex-shrink:0;padding:0 14px}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab-item{padding:14px 14px 12px;font-size:13px;font-weight:600;color:var(--ink3);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;flex-shrink:0;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit}
+.tab-item.active{color:var(--ac);border-bottom-color:var(--ac)}
+
+/* ── BOTTOM NAV ── */
+.bnav{background:var(--white);border-top:.5px solid var(--border);display:flex;padding:8px 0 calc(8px + var(--sb));flex-shrink:0}
+.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;background:none;border:none;font-family:inherit;padding:4px 0}
+.bn-icon{font-size:20px;line-height:1}
+.bn-label{font-size:10px;font-weight:600;color:var(--ink3)}
+.bn-item.active .bn-label{color:var(--ac)}
+.bn-dot{width:5px;height:5px;border-radius:50%;background:var(--ac);margin-top:-2px;display:none}
+.bn-item.has-new .bn-dot{display:block}
+
+/* ── CARDS ── */
+.card{background:var(--white);border-radius:16px;border:.5px solid var(--border);margin-bottom:12px;overflow:hidden}
+.card-hd{padding:14px 16px;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:14px;font-weight:700;color:var(--ink)}
+.card-action{font-size:12px;color:var(--pu);font-weight:600;cursor:pointer}
+.card-bd{padding:14px 16px}
+
+/* ── STAT CARDS ── */
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.stat-card{background:var(--white);border-radius:14px;border:.5px solid var(--border);padding:14px}
+.sc-val{font-size:26px;font-weight:800;color:var(--ink)}
+.sc-lbl{font-size:11px;color:var(--ink3);margin-top:3px}
+.sc-sub{font-size:11px;color:var(--gr);margin-top:5px;font-weight:600}
+
+/* ── BAR CHART ── */
+.bar-item{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.bar-lbl{font-size:11px;color:var(--ink3);width:26px;flex-shrink:0}
+.bar-track{flex:1;height:7px;background:var(--bg);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;background:var(--pu);transition:width .5s}
+.bar-val{font-size:11px;color:var(--ink3);width:26px;text-align:right}
+
+/* ── KW ── */
+.kw-cloud{display:flex;flex-wrap:wrap;gap:9px;padding:2px 0}
+.kw-tag{font-weight:800;cursor:default;line-height:1.2}
+
+/* ── REVIEW CARD ── */
+.rv-card{padding:12px;border-radius:12px;background:var(--bg);border-left:3px solid var(--pu);margin-bottom:10px}
+.rv-card:last-child{margin-bottom:0}
+.rv-card.new-rv{border-left-color:var(--ac)}
+.rvc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.rvc-name{font-size:13px;font-weight:700;color:var(--ink)}
+.rvc-org{font-size:11px;color:var(--ink3);margin-top:1px}
+.rvc-stars{font-size:13px;color:var(--am)}
+.rvc-text{font-size:13px;color:var(--ink2);line-height:1.5}
+.rvc-boxes{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
+.rvc-box{border-radius:8px;padding:8px 10px}
+.rvc-bl{font-size:10px;font-weight:700;margin-bottom:3px}
+.rvc-bt{font-size:12px;color:var(--ink);line-height:1.5}
+.new-badge{display:inline-block;font-size:9px;font-weight:800;background:var(--ac);color:#fff;padding:1px 6px;border-radius:20px;margin-left:5px;vertical-align:middle}
+
+/* ── SCHEDULE ── */
+.sched-card{display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--white);border-radius:14px;border:.5px solid var(--border);margin-bottom:9px}
+.sched-card.upcoming{border-color:var(--pu);background:var(--pul)}
+.sd-date{text-align:center;min-width:46px;background:var(--white);border-radius:10px;padding:8px 6px;border:.5px solid var(--border)}
+.sd-day{font-size:20px;font-weight:800;color:var(--ink);line-height:1}
+.sd-mon{font-size:10px;color:var(--ink3);margin-top:2px}
+.sd-info{flex:1}
+.sd-title{font-size:14px;font-weight:700;color:var(--ink)}
+.sd-meta{font-size:11px;color:var(--ink3);margin-top:3px}
+.sd-badge{font-size:11px;font-weight:700;padding:6px 13px;border-radius:20px;border:none;cursor:pointer;font-family:inherit}
+.sd-badge.up{background:var(--pu);color:#fff}
+.sd-badge.dn{background:var(--bg);color:var(--ink3)}
+
+/* ── QR ── */
+.qr-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:14px;background:#fff;border-radius:16px;border:.5px solid var(--border)}
+.qr-c{border-radius:2px;aspect-ratio:1}
+.color-row{display:flex;gap:10px;justify-content:center}
+.c-pick{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:border-color .15s}
+.c-pick.sel{border-color:var(--ink)}
+.lec-option{padding:13px 14px;border-radius:12px;border:.5px solid var(--border);background:var(--white);margin-bottom:9px;cursor:pointer;transition:all .15s}
+.lec-option.sel{border-color:var(--pu);background:var(--pul)}
+.lo-title{font-size:13px;font-weight:700;color:var(--ink)}
+.lo-meta{font-size:11px;color:var(--ink3);margin-top:3px}
+
+/* ── MATERIALS ── */
+.mat-card{background:var(--white);border-radius:14px;border:.5px solid var(--border);padding:14px;margin-bottom:10px}
+.mc-row{display:flex;gap:12px;align-items:flex-start}
+.mc-icon{font-size:30px;flex-shrink:0}
+.mc-info{flex:1}
+.mc-title{font-size:14px;font-weight:700;color:var(--ink)}
+.mc-meta{font-size:11px;color:var(--ink3);margin-top:3px}
+.mc-badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;margin-top:7px}
+.mc-ai{border-top:.5px solid var(--border);margin-top:12px;padding-top:12px}
+.mc-ai-item{display:flex;gap:7px;font-size:12px;color:var(--ink2);line-height:1.5;margin-bottom:7px}
+.mc-ai-dot{width:5px;height:5px;border-radius:50%;background:var(--pu);flex-shrink:0;margin-top:5px}
+
+/* ── PROFILE ── */
+.pf-block{background:var(--white);border-radius:14px;border:.5px solid var(--border);overflow:hidden;margin-bottom:8px}
+.pf-row{padding:12px 14px;border-bottom:.5px solid var(--border);display:flex;align-items:center;gap:12px}
+.pf-row:last-child{border-bottom:none}
+.pf-lbl{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;width:72px;flex-shrink:0}
+.pf-val{flex:1;font-size:14px;color:var(--ink);background:none;border:none;outline:none;font-family:inherit;width:100%}
+.sns-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--white);border-radius:12px;border:.5px solid var(--border);margin-bottom:8px}
+.sns-ic{font-size:18px}
+.sns-name{font-size:13px;font-weight:700;color:var(--ink);width:72px;flex-shrink:0}
+.sns-val{flex:1;font-size:13px;color:var(--ink2)}
+.sns-on{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--grl);color:var(--gr)}
+.sns-off{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--bg);color:var(--ink3)}
+
+/* ── FORM ── */
+.f-group{margin-bottom:14px}
+.f-lbl{font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px;display:block}
+.f-inp{width:100%;background:var(--white);border:.5px solid var(--border2);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--ink);outline:none;font-family:inherit;-webkit-appearance:none;appearance:none}
+.f-inp:focus{border-color:var(--pu)}
+textarea.f-inp{resize:none;line-height:1.6}
+.f-2col{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.star-row{display:flex;gap:8px;justify-content:center;margin-bottom:5px}
+.star{font-size:40px;cursor:pointer;color:#E0DFDA;user-select:none;transition:color .1s}
+.star.on{color:var(--am)}
+.star-hint{text-align:center;font-size:13px;color:var(--ink3);min-height:18px}
+
+/* ── STEPS ── */
+.step-hd{background:var(--white);border-bottom:.5px solid var(--border);padding:12px 18px;flex-shrink:0}
+.step-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.step-lbl{font-size:13px;font-weight:700;color:var(--ink)}
+.step-cnt{font-size:12px;color:var(--ink3)}
+.step-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.step-fill{height:100%;border-radius:2px;background:var(--ac);transition:width .3s}
+.step-dots{display:flex;gap:5px;margin-top:8px}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--border)}
+.sdot.on{background:var(--ac);width:16px;border-radius:3px}
+.sdot.done{background:var(--ac)}
+
+/* ── REVIEW LANDING ── */
+.rv-hero{background:var(--pu);padding:28px 18px 52px}
+.rvh-lec{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.rvh-title{font-size:20px;font-weight:800;color:#fff;line-height:1.3;margin-bottom:4px}
+.rvh-meta{font-size:12px;color:rgba(255,255,255,.6)}
+.rv-prof-pull{margin:-30px 16px 0;background:var(--white);border-radius:18px;border:.5px solid var(--border);padding:16px}
+.rpp-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.rpp-av{width:44px;height:44px;border-radius:12px;background:var(--pu);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0}
+.rpp-name{font-size:15px;font-weight:800;color:var(--ink)}
+.rpp-sub{font-size:12px;color:var(--ink3);margin-top:2px}
+.rpp-quote{background:var(--pul);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--pud);line-height:1.6;font-style:italic;margin-bottom:12px}
+.rpp-stats{display:flex;border-top:.5px solid var(--border);padding-top:10px}
+.rpp-stat{flex:1;text-align:center}
+.rpp-sv{font-size:15px;font-weight:800;color:var(--ink)}
+.rpp-sl{font-size:10px;color:var(--ink3);margin-top:1px}
+.rpp-stat+.rpp-stat{border-left:.5px solid var(--border)}
+.lec-topics{display:flex;flex-wrap:wrap;gap:5px;margin:10px 16px 0}
+.lec-topic{font-size:11px;background:var(--white);color:var(--ink2);padding:4px 10px;border-radius:20px;border:.5px solid var(--border)}
+
+/* ── CONSENT ── */
+.ct-item{display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:.5px solid var(--border)}
+.ct-item:last-child{border-bottom:none;padding-bottom:0}
+.ct-body{flex:1}
+.ct-lbl{font-size:13px;font-weight:700;color:var(--ink)}
+.ct-desc{font-size:12px;color:var(--ink3);margin-top:3px;line-height:1.5}
+.rec-chip{display:inline-block;font-size:10px;font-weight:700;background:var(--pul);color:var(--pu);padding:1px 7px;border-radius:20px;margin-left:5px;vertical-align:middle}
+.tog{width:44px;height:26px;border-radius:13px;border:none;background:#DDD;position:relative;cursor:pointer;flex-shrink:0;transition:background .2s;margin-top:2px}
+.tog.on{background:var(--pu)}
+.tog::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s}
+.tog.on::after{transform:translateX(18px)}
+
+/* ── COMPLETE ── */
+.complete-hero{padding:40px 20px 24px;text-align:center}
+.ch-icon{width:72px;height:72px;border-radius:22px;background:var(--grl);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px}
+.ch-title{font-size:22px;font-weight:800;color:var(--ink);margin-bottom:6px}
+.ch-sub{font-size:14px;color:var(--ink3);line-height:1.7}
+.channel-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.ch-btn{background:var(--white);border:.5px solid var(--border);border-radius:14px;padding:16px 12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px}
+.ch-btn-ic{font-size:28px}
+.ch-btn-name{font-size:12px;font-weight:700;color:var(--ink)}
+.ch-btn-handle{font-size:11px;color:var(--ink3)}
+.join-card{background:var(--pul);border-radius:16px;padding:18px}
+.jc-title{font-size:15px;font-weight:800;color:var(--pud);margin-bottom:5px}
+.jc-desc{font-size:13px;color:var(--pu);line-height:1.6;margin-bottom:14px}
+
+/* ── BUTTONS ── */
+.btn{display:block;width:100%;padding:15px;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;border:none;text-align:center}
+.btn:active{opacity:.85}
+.btn-ac{background:var(--ac);color:#fff}
+.btn-pu{background:var(--pu);color:#fff}
+.btn-ink{background:var(--ink);color:#fff}
+.btn-out{background:var(--white);border:.5px solid var(--border2);color:var(--ink)}
+.btn-sm{padding:10px 18px;border-radius:20px;font-size:13px;width:auto;display:inline-block}
+
+/* ── AI BOXES ── */
+.ai-item{border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.ai-lbl{font-size:10px;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.ai-val{font-size:13px;color:var(--ink);font-weight:600}
+.ai-sub{font-size:11px;color:var(--ink3);margin-top:3px}
+
+/* ── SECTION LABEL ── */
+.sec-lbl{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px;display:block}
+
+/* ── MODAL ── */
+.modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal-wrap.hidden{display:none}
+.modal{background:var(--white);border-radius:22px 22px 0 0;padding:22px 20px calc(22px + var(--sb));width:100%;max-width:390px}
+.modal-title{font-size:17px;font-weight:800;color:var(--ink);margin-bottom:18px}
+.modal-btns{display:flex;gap:9px;margin-top:18px}
+.modal-cancel{flex:1;background:var(--bg);border:.5px solid var(--border2);color:var(--ink2);padding:13px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.modal-confirm{flex:2;background:var(--pu);border:none;color:#fff;padding:13px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:calc(88px + var(--sb));left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:#fff;font-size:13px;font-weight:700;padding:12px 22px;border-radius:22px;z-index:300;opacity:0;transition:all .25s;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── LOADING ── */
+.loading-wrap{display:flex;align-items:center;justify-content:center;gap:8px;padding:48px 0;color:var(--ink3);font-size:13px}
+.spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--pu);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:40px 20px}
+.es-icon{font-size:40px;margin-bottom:12px}
+.es-title{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.es-desc{font-size:13px;color:var(--ink3);line-height:1.6}
+
+@media(min-width:391px){body{background:#111}.app{box-shadow:0 0 80px rgba(0,0,0,.6)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ SPLASH ═══ -->
+<div class="view active" id="v-splash">
+  <div class="splash">
+    <div class="splash-logo-wrap"><div class="splash-logo-icon">🎓</div></div>
+    <div class="splash-brand">After<span>Class</span></div>
+    <div class="splash-tagline">강의가 끝난 뒤에도<br>당신의 지식은 계속 일합니다</div>
+    <div class="splash-features">
+      <div class="sf-item">
+        <div class="sf-icon" style="background:#E8552D22">🔲</div>
+        <div class="sf-text">
+          <div class="sf-title">QR 후기 수집</div>
+          <div class="sf-desc">강의 현장에서 바로 — 수강생 후기를 즉시 수집해요</div>
+        </div>
+      </div>
+      <div class="sf-item">
+        <div class="sf-icon" style="background:#6C5CE722">🤖</div>
+        <div class="sf-text">
+          <div class="sf-title">AI 후기 분석</div>
+          <div class="sf-desc">쌓인 후기를 AI가 분석해 강의 개선점을 찾아줘요</div>
+        </div>
+      </div>
+      <div class="sf-item">
+        <div class="sf-icon" style="background:#00B89422">💰</div>
+        <div class="sf-text">
+          <div class="sf-title">강의자료 수익화</div>
+          <div class="sf-desc">자료를 마켓에 올려 강의 후에도 계속 수익을 만들어요</div>
+        </div>
+      </div>
+    </div>
+    <div class="splash-btns">
+      <button class="sbtn sbtn-main" onclick="goView('v-dash')">강사로 시작하기</button>
+      <button class="sbtn sbtn-sub" onclick="goView('v-review')">후기 남기기 (수강생)</button>
+    </div>
+    <div class="splash-footer">가입 무료 · 신용카드 불필요</div>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="view" id="v-dash">
+  <div class="topbar">
+    <div class="tb-logo">After<span>Class</span></div>
+    <div class="tb-right">
+      <button class="tb-btn tb-btn-out" onclick="goView('v-splash')">← 홈</button>
+      <button class="tb-btn tb-btn-fill" onclick="openModal('m-lecture')">+ 강의</button>
+    </div>
+  </div>
+  <div class="prof-header">
+    <div class="ph-row">
+      <div class="av">이</div>
+      <div>
+        <div class="ph-name">이지훈 강사</div>
+        <div class="ph-sub">워크스마트 · AI 활용 · 리더십</div>
+      </div>
+    </div>
+    <div class="ph-stats">
+      <div class="ph-stat"><div class="ph-sv" id="ph-total">-</div><div class="ph-sl">전체 후기</div></div>
+      <div class="ph-stat"><div class="ph-sv" id="ph-avg">-</div><div class="ph-sl">평균 별점</div></div>
+      <div class="ph-stat"><div class="ph-sv">1,204</div><div class="ph-sl">팔로워</div></div>
+    </div>
+  </div>
+  <div class="tab-bar" id="dash-tabs">
+    <button class="tab-item active" onclick="switchTab('overview',this)">개요</button>
+    <button class="tab-item" onclick="switchTab('reviews',this)" id="tab-rv">후기</button>
+    <button class="tab-item" onclick="switchTab('qr',this)">QR 생성</button>
+    <button class="tab-item" onclick="switchTab('schedule',this)">강의 일정</button>
+    <button class="tab-item" onclick="switchTab('materials',this)">강의자료</button>
+    <button class="tab-item" onclick="switchTab('profile',this)">프로필</button>
+  </div>
+  <div class="scroll" style="padding:16px 16px 20px" id="dash-body"></div>
+  <div class="bnav">
+    <button class="bn-item active" id="bn-overview" onclick="switchTab('overview',null);setBnav('overview')"><div class="bn-icon">📊</div><div class="bn-label">개요</div><div class="bn-dot"></div></button>
+    <button class="bn-item" id="bn-reviews" onclick="switchTab('reviews',null);setBnav('reviews')"><div class="bn-icon">💬</div><div class="bn-label">후기</div><div class="bn-dot"></div></button>
+    <button class="bn-item" id="bn-qr" onclick="switchTab('qr',null);setBnav('qr')"><div class="bn-icon">🔲</div><div class="bn-label">QR</div><div class="bn-dot"></div></button>
+    <button class="bn-item" id="bn-schedule" onclick="switchTab('schedule',null);setBnav('schedule')"><div class="bn-icon">📅</div><div class="bn-label">일정</div><div class="bn-dot"></div></button>
+    <button class="bn-item" id="bn-profile" onclick="switchTab('profile',null);setBnav('profile')"><div class="bn-icon">👤</div><div class="bn-label">프로필</div><div class="bn-dot"></div></button>
+  </div>
+</div>
+
+<!-- ═══ REVIEW (수강생) ═══ -->
+<div class="view" id="v-review">
+  <div class="step-hd">
+    <div class="step-row">
+      <span class="step-lbl" id="step-lbl">강사 소개</span>
+      <span class="step-cnt" id="step-cnt">1 / 3</span>
+    </div>
+    <div class="step-track"><div class="step-fill" id="step-fill" style="width:33%"></div></div>
+    <div class="step-dots" id="step-dots"></div>
+  </div>
+  <!-- step 1 -->
+  <div class="scroll" id="rs1">
+    <div style="height:14px"></div>
+    <div class="rv-hero">
+      <div class="rvh-lec">오늘의 강의</div>
+      <div class="rvh-title">AI 활용 실무<br>업무 효율 10배 올리기</div>
+      <div class="rvh-meta">2025. 04. 22 · 삼성전자 본사 · 이지훈 강사</div>
+    </div>
+    <div class="rv-prof-pull">
+      <div class="rpp-row">
+        <div class="rpp-av">이</div>
+        <div><div class="rpp-name">이지훈</div><div class="rpp-sub">워크스마트 · AI 활용 · 리더십</div></div>
+      </div>
+      <div class="rpp-quote">"일은 열심히보다 똑똑하게. AI와 함께라면 누구든 10배의 성과를 낼 수 있습니다."</div>
+      <div class="rpp-stats">
+        <div class="rpp-stat"><div class="rpp-sv" id="rpp-total">-</div><div class="rpp-sl">누적 후기</div></div>
+        <div class="rpp-stat"><div class="rpp-sv" id="rpp-avg">-</div><div class="rpp-sl">평균 별점</div></div>
+        <div class="rpp-stat"><div class="rpp-sv">128회</div><div class="rpp-sl">강의 횟수</div></div>
+      </div>
+    </div>
+    <div class="lec-topics">
+      <span class="lec-topic">ChatGPT 실무</span>
+      <span class="lec-topic">프롬프트 작성</span>
+      <span class="lec-topic">업무 자동화</span>
+      <span class="lec-topic">AI 보고서</span>
+    </div>
+    <div style="padding:20px 16px">
+      <button class="btn btn-ac" onclick="gotoStep(2)">후기 작성하기 →</button>
+      <div style="text-align:center;margin-top:12px;font-size:13px;color:var(--ink3);cursor:pointer" onclick="goView('v-splash')">← 돌아가기</div>
+    </div>
+  </div>
+  <!-- step 2 -->
+  <div class="scroll hidden" id="rs2">
+    <div style="padding:16px">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-bd">
+          <div class="f-group" style="text-align:center">
+            <div class="f-lbl" style="text-align:center;font-size:14px;margin-bottom:12px">오늘 강의, 어떠셨나요?</div>
+            <div class="star-row" id="star-row">
+              <span class="star" onclick="setStar(1)">★</span>
+              <span class="star" onclick="setStar(2)">★</span>
+              <span class="star" onclick="setStar(3)">★</span>
+              <span class="star" onclick="setStar(4)">★</span>
+              <span class="star" onclick="setStar(5)">★</span>
+            </div>
+            <div class="star-hint" id="star-hint">별을 눌러 평점을 남겨주세요</div>
+          </div>
+        </div>
+        <div style="height:.5px;background:var(--border)"></div>
+        <div class="card-bd">
+          <div class="f-group">
+            <span class="f-lbl">성함 / 소속</span>
+            <div class="f-2col">
+              <input class="f-inp" id="f-name" placeholder="이름">
+              <input class="f-inp" id="f-org" placeholder="소속 회사·기관">
+            </div>
+          </div>
+          <div class="f-group">
+            <span class="f-lbl">👍 좋았던 점 <span style="color:var(--ac)">*</span></span>
+            <textarea class="f-inp" id="f-good" rows="3" placeholder="어떤 점이 특히 유익하셨나요?"></textarea>
+          </div>
+          <div class="f-group">
+            <span class="f-lbl">😅 아쉬운 점</span>
+            <textarea class="f-inp" id="f-bad" rows="2" placeholder="개선됐으면 하는 점이 있다면요"></textarea>
+          </div>
+          <div class="f-group">
+            <span class="f-lbl">📚 더 배우고 싶은 내용</span>
+            <textarea class="f-inp" id="f-more" rows="2" placeholder="다음에 다뤄줬으면 하는 주제가 있나요?"></textarea>
+          </div>
+          <div class="f-group" style="margin-bottom:0">
+            <span class="f-lbl">이메일 <span style="color:var(--ink3);font-weight:400">(강의자료 수령 · 선택)</span></span>
+            <input class="f-inp" id="f-email" type="email" placeholder="example@company.com">
+            <div style="font-size:11px;color:var(--ink3);margin-top:6px">강의자료와 다음 강의 소식을 보내드려요</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:0 16px 24px">
+      <button class="btn btn-ac" id="submit-rv-btn" onclick="submitReview()">후기 제출하기 →</button>
+      <div style="text-align:center;margin-top:12px;font-size:13px;color:var(--ink3);cursor:pointer" onclick="gotoStep(1)">← 이전으로</div>
+    </div>
+  </div>
+  <!-- step 3 완료 -->
+  <div class="scroll hidden" id="rs3">
+    <div class="complete-hero">
+      <div class="ch-icon">✓</div>
+      <div class="ch-title">후기가 전달됐어요!</div>
+      <div class="ch-sub">소중한 후기 감사합니다.<br>강의자료는 입력하신 이메일로 곧 전달됩니다.</div>
+    </div>
+    <div style="padding:0 16px 24px">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-title">📄 전달될 강의자료</div></div>
+        <div class="card-bd" style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:28px">📊</div>
+          <div><div style="font-size:13px;font-weight:700;color:var(--ink)">AI 활용 실무 1강 자료.pdf</div><div style="font-size:11px;color:var(--ink3);margin-top:2px">이메일로 발송 예정</div></div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px">이지훈 강사 채널 팔로우</div>
+      <div class="channel-grid">
+        <button class="ch-btn"><div class="ch-btn-ic">📸</div><div class="ch-btn-name">Instagram</div><div class="ch-btn-handle">@worksmart_lee</div></button>
+        <button class="ch-btn"><div class="ch-btn-ic">▶</div><div class="ch-btn-name">YouTube</div><div class="ch-btn-handle">워크스마트TV</div></button>
+        <button class="ch-btn"><div class="ch-btn-ic">💬</div><div class="ch-btn-name">KakaoTalk</div><div class="ch-btn-handle">워크스마트채널</div></button>
+        <button class="ch-btn"><div class="ch-btn-ic">💼</div><div class="ch-btn-name">LinkedIn</div><div class="ch-btn-handle">이지훈 WorkSmart</div></button>
+      </div>
+      <div class="join-card">
+        <div class="jc-title">더 많은 혜택을 원하신다면</div>
+        <div class="jc-desc">강의자료 구매, 전체 후기 열람,<br>다음 강의 알림 — 회원이면 모두 가능해요</div>
+        <button class="btn btn-pu" style="padding:13px" onclick="toast('회원가입 기능 준비 중이에요!')">소셜 1초 가입하기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 강의 추가 모달 -->
+<div class="modal-wrap hidden" id="m-lecture" onclick="closeModal('m-lecture')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">새 강의 등록</div>
+    <div class="f-group"><span class="f-lbl">강의 주제</span><input class="f-inp" id="ml-title" placeholder="예: AI 활용 실무"></div>
+    <div class="f-group"><span class="f-lbl">날짜</span><input class="f-inp" id="ml-date" type="date"></div>
+    <div class="f-group"><span class="f-lbl">시간</span><input class="f-inp" id="ml-time" type="time"></div>
+    <div class="f-group"><span class="f-lbl">기관명</span><input class="f-inp" id="ml-org" placeholder="예: 삼성전자 본사"></div>
+    <div class="f-group"><span class="f-lbl">예상 인원</span><input class="f-inp" id="ml-n" type="number" placeholder="40"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('m-lecture')">취소</button>
+      <button class="modal-confirm" id="ml-btn" onclick="addLecture()">등록하기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast-el"></div>
+
+<script>
+const SURL='https://hbnwjbhkaxcrinekscpw.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhibndqYmhrYXhjcmluZWtzY3B3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0Mzc0NDQsImV4cCI6MjA5MjAxMzQ0NH0.kBCeNPTWl9EtoXYvrzbksd4TR7ELu9IdrDbhXMpMxyY';
+const db=supabase.createClient(SURL,SKEY);
+
+const MONTHS=[{m:'11월',c:312},{m:'12월',c:389},{m:'1월',c:298},{m:'2월',c:421},{m:'3월',c:456},{m:'4월',c:187}];
+const KWS=[{w:'실용적',s:22,col:'#6C5CE7'},{w:'명확함',s:18,col:'#6C5CE7'},{w:'동기부여',s:17,col:'#4A3DB5'},{w:'에너지',s:15,col:'#AFA9EC'},{w:'인사이트',s:15,col:'#AFA9EC'},{w:'이해쉬움',s:13,col:'#CCC'},{w:'개선필요',s:12,col:'#BBB'}];
+const MATS=[
+  {icon:'📄',title:'AI 활용 실무 1강 자료',lecture:'AI 활용 실무',type:'PDF',size:'4.2MB',dl:142,views:380,items:['ChatGPT 실습 예제 3개 포함 — 수강생 반응 매우 긍정적','미다룬 요청 주제: 이미지 생성 AI, 코드 작성 활용','슬라이드 밀도 높음 — 핵심 요약 슬라이드 추가 권장']},
+  {icon:'📊',title:'워크스마트 리더십 PPT',lecture:'워크스마트 리더십',type:'PPT',size:'8.7MB',dl:89,views:220,items:['리더십 프레임워크 명확 — 이해도 높음','미다룬 주제: 비대면 리더십, MZ 세대 관리','대기업 사례 중심 — 중소기업 사례 추가 권장']},
+];
+
+let allRv=[], allSc=[], lastCnt=0, newIds=new Set(), qrCol='#6C5CE7';
+
+// ── API ──
+async function loadRv(){const{data}=await db.from('reviews').select('*').order('created_at',{ascending:false});allRv=data||[];return allRv;}
+async function loadSc(){const{data}=await db.from('schedules').select('*').order('date',{ascending:true});allSc=data||[];return allSc;}
+async function insertRv(d){const{data,error}=await db.from('reviews').insert([d]).select();if(error)throw error;return data[0];}
+async function insertSc(d){const{data,error}=await db.from('schedules').insert([d]).select();if(error)throw error;return data[0];}
+
+function calcStats(rv){const t=rv.length;const a=t?(rv.reduce((s,r)=>s+(r.rating||0),0)/t).toFixed(1):'0.0';return{t,a};}
+
+async function refreshStats(){
+  const rv=await loadRv();
+  const{t,a}=calcStats(rv);
+  ['ph-total','rpp-total'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=t.toLocaleString();});
+  ['ph-avg','rpp-avg'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=a+'★';});
+  if(lastCnt>0&&t>lastCnt){
+    const diff=t-lastCnt;
+    for(let i=0;i<diff;i++)newIds.add(rv[i].id);
+    document.getElementById('bn-reviews').classList.add('has-new');
+    document.getElementById('tab-rv').textContent='후기 🔴';
+    toast(`새 후기 ${diff}개 도착! 🎉`);
+  }
+  lastCnt=t;
+}
+
+// ── ROUTING ──
+function goView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='v-dash'){switchTab('overview',null);refreshStats();}
+  if(id==='v-review'){gotoStep(1);refreshStats();}
+}
+
+// ── TOAST ──
+function toast(msg){
+  const el=document.getElementById('toast-el');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// ── MODAL ──
+function openModal(id){document.getElementById(id).classList.remove('hidden');}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+
+// ── DASHBOARD TABS ──
+function setBnav(tab){
+  document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('bn-'+tab);
+  if(el)el.classList.add('active');
+}
+
+async function switchTab(tab,btn){
+  document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  else{
+    const map={overview:0,reviews:1,qr:2,schedule:3,materials:4,profile:5};
+    const tabs=document.querySelectorAll('.tab-item');
+    if(tabs[map[tab]])tabs[map[tab]].classList.add('active');
+  }
+  const body=document.getElementById('dash-body');
+  body.innerHTML=`<div class="loading-wrap"><div class="spin"></div>불러오는 중...</div>`;
+
+  if(tab==='overview'){
+    const rv=await loadRv();const sc=await loadSc();
+    const{t,a}=calcStats(rv);const maxC=Math.max(...MONTHS.map(m=>m.c));
+    body.innerHTML=`
+      <div class="stat-row">
+        <div class="stat-card"><div class="sc-val">${t.toLocaleString()}</div><div class="sc-lbl">전체 후기</div><div class="sc-sub">실시간 반영</div></div>
+        <div class="stat-card"><div class="sc-val">${a}★</div><div class="sc-lbl">평균 별점</div><div class="sc-sub">5점 만점</div></div>
+        <div class="stat-card"><div class="sc-val">1,204</div><div class="sc-lbl">팔로워</div><div class="sc-sub">↑ +89 지난달</div></div>
+        <div class="stat-card"><div class="sc-val">${sc.length}</div><div class="sc-lbl">등록 강의</div><div class="sc-sub">예정 ${sc.filter(s=>s.status==='예정').length}개</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-title">월별 후기 추이</div></div>
+        <div class="card-bd">${MONTHS.map(m=>`<div class="bar-item"><span class="bar-lbl">${m.m}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(m.c/maxC*100)}%"></div></div><span class="bar-val">${m.c}</span></div>`).join('')}</div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-title">주요 키워드</div></div>
+        <div class="card-bd"><div class="kw-cloud">${KWS.map(k=>`<span class="kw-tag" style="font-size:${k.s}px;color:${k.col}">${k.w}</span>`).join('')}</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-title">최근 후기</div><span class="card-action" onclick="switchTab('reviews',null);setBnav('reviews')">전체보기</span></div>
+        <div class="card-bd">${rv.length?rv.slice(0,3).map(r=>rvHtml(r,false)).join(''):`<div class="empty-state"><div class="es-icon">💬</div><div class="es-title">아직 후기가 없어요</div><div class="es-desc">QR 코드를 생성해서 수강생에게 공유해보세요</div></div>`}</div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-title">🤖 AI 인사이트</div></div>
+        <div class="card-bd">
+          <div class="ai-item" style="background:var(--pul)"><div class="ai-lbl" style="color:var(--pud)">가장 많이 요청된 주제</div><div class="ai-val">프롬프트 엔지니어링 (68건)</div></div>
+          <div class="ai-item" style="background:var(--acl)"><div class="ai-lbl" style="color:var(--ac)">개선 필요 키워드</div><div class="ai-val">시간 부족 (12건 언급)</div><div class="ai-sub">→ 강의 전날 자료 사전 발송 추천</div></div>
+          <div class="ai-item" style="background:var(--grl)"><div class="ai-lbl" style="color:var(--gr)">AI 추천</div><div class="ai-val">실습 시간 10분 추가 → 만족도 +0.4 예상</div></div>
+        </div>
+      </div>`;
+
+  }else if(tab==='reviews'){
+    const rv=await loadRv();
+    document.getElementById('bn-reviews').classList.remove('has-new');
+    document.getElementById('tab-rv').textContent='후기';
+    const lectures=['전체',...new Set(rv.map(r=>r.lecture).filter(Boolean))];
+    body.innerHTML=`
+      <div style="display:flex;gap:7px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px">
+        ${lectures.map((l,i)=>`<button onclick="filterRv('${l}',this)" style="padding:8px 16px;border-radius:20px;border:none;background:${i===0?'var(--ink)':'var(--bg)'};color:${i===0?'#fff':'var(--ink3)'};font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;font-family:inherit;flex-shrink:0">${l}</button>`).join('')}
+      </div>
+      <div id="rv-list">${rv.length?rv.map(r=>rvHtml(r,true)).join(''):`<div class="empty-state"><div class="es-icon">💬</div><div class="es-title">아직 후기가 없어요!</div><div class="es-desc">강의 현장에서 QR 코드를 보여주세요 📱</div></div>`}</div>`;
+    newIds.clear();
+
+  }else if(tab==='qr'){
+    const sc=await loadSc();
+    const up=sc.filter(s=>s.status==='예정');
+    const cols=['#6C5CE7','#E8552D','#00B894','#F39C12','#1A1A1A'];
+    qrCol='#6C5CE7';
+    body.innerHTML=`
+      <div class="card">
+        <div class="card-hd"><div class="card-title">강의 선택</div></div>
+        <div class="card-bd" id="qr-lec-list">
+          ${up.length?up.map((s,i)=>`<div class="lec-option${i===0?' sel':''}" onclick="selLec(this,'${s.title} · ${s.date}')">`+
+            `<div class="lo-title">${s.title}</div><div class="lo-meta">${s.date} · ${s.org||'기관 미정'} · ${s.n||0}명</div></div>`).join('')
+            :`<div class="empty-state" style="padding:20px 0"><div class="es-icon">📅</div><div class="es-title">예정된 강의가 없어요</div><div class="es-desc">상단 + 버튼으로 강의를 먼저 등록해주세요</div></div>`}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-title">QR 코드</div></div>
+        <div class="card-bd" style="display:flex;flex-direction:column;align-items:center;gap:16px">
+          <div class="qr-grid" id="qr-g" style="width:168px;height:168px"></div>
+          <div style="text-align:center">
+            <div style="font-size:15px;font-weight:800;color:var(--ink)">이지훈 강사</div>
+            <div style="font-size:12px;color:var(--ink3);margin-top:3px" id="qr-meta">${up.length?up[0].title+' · '+up[0].date:'강의를 선택해주세요'}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--ink3);text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">포인트 색상</div>
+            <div class="color-row">${cols.map(c=>`<div class="c-pick${c===qrCol?' sel':''}" style="background:${c}" onclick="setQrCol('${c}',this)"></div>`).join('')}</div>
+          </div>
+          <div style="display:flex;gap:9px;width:100%">
+            <button class="btn btn-out" style="flex:1;padding:12px" onclick="toast('PNG 저장은 곧 지원됩니다!')">PNG 저장</button>
+            <button class="btn btn-pu" style="flex:1;padding:12px" onclick="copyLink()">링크 복사</button>
+          </div>
+        </div>
+      </div>`;
+    drawQR();
+
+  }else if(tab==='schedule'){
+    const sc=await loadSc();
+    const up=sc.filter(s=>s.status==='예정');
+    const dn=sc.filter(s=>s.status==='완료');
+    body.innerHTML=`
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-pu btn-sm" onclick="openModal('m-lecture')">+ 강의 추가</button></div>
+      <span class="sec-lbl">📅 예정된 강의</span>
+      ${up.length?up.map(s=>schedHtml(s,true)).join(''):`<div class="empty-state"><div class="es-icon">📅</div><div class="es-title">예정된 강의가 없어요</div><div class="es-desc">+ 강의 추가 버튼으로 등록해보세요</div></div>`}
+      <span class="sec-lbl">✅ 완료된 강의</span>
+      ${dn.length?dn.map(s=>schedHtml(s,false)).join(''):`<div style="text-align:center;padding:20px;color:var(--ink3);font-size:13px">완료된 강의가 없어요</div>`}`;
+
+  }else if(tab==='materials'){
+    body.innerHTML=`
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-pu btn-sm" onclick="toast('자료 업로드 기능 준비 중이에요!')">+ 자료 추가</button></div>
+      ${MATS.map(m=>`
+        <div class="mat-card">
+          <div class="mc-row">
+            <div class="mc-icon">${m.icon}</div>
+            <div class="mc-info">
+              <div class="mc-title">${m.title}</div>
+              <div class="mc-meta">${m.lecture} · ${m.type} · ${m.size}</div>
+              <div class="mc-meta" style="margin-top:3px">👁 ${m.views}회 열람 · ⬇ ${m.dl}회 다운로드</div>
+              <span class="mc-badge" style="background:var(--pul);color:var(--pud)">AI 분석 완료</span>
+            </div>
+          </div>
+          <div class="mc-ai">${m.items.map(i=>`<div class="mc-ai-item"><div class="mc-ai-dot"></div><span>${i}</span></div>`).join('')}</div>
+        </div>`).join('')}`;
+
+  }else if(tab==='profile'){
+    body.innerHTML=`
+      <div style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--white);border-radius:16px;border:.5px solid var(--border);margin-bottom:14px">
+        <div style="width:62px;height:62px;border-radius:16px;background:var(--pu);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff">이</div>
+        <div style="flex:1"><div style="font-size:16px;font-weight:800;color:var(--ink)">이지훈</div><div style="font-size:12px;color:var(--ink3);margin-top:2px">워크스마트 대표 강사</div></div>
+        <button class="btn btn-out btn-sm" onclick="toast('사진 변경은 곧 지원됩니다!')">사진 변경</button>
+      </div>
+      <div class="pf-block">
+        <div class="pf-row"><span class="pf-lbl">이름</span><input class="pf-val" value="이지훈"></div>
+        <div class="pf-row"><span class="pf-lbl">소속</span><input class="pf-val" value="워크스마트"></div>
+        <div class="pf-row"><span class="pf-lbl">분야</span><input class="pf-val" value="AI 활용 · 리더십 · 조직문화"></div>
+        <div class="pf-row"><span class="pf-lbl">이메일</span><input class="pf-val" type="email" value="lee@worksmart.kr"></div>
+        <div class="pf-row"><span class="pf-lbl">담당자</span><input class="pf-val" type="email" value="manager@worksmart.kr"></div>
+      </div>
+      <span class="sec-lbl">SNS 연결</span>
+      ${[{ic:'📸',n:'Instagram',on:true,v:'@worksmart_lee'},{ic:'▶',n:'YouTube',on:true,v:'워크스마트TV'},{ic:'💼',n:'LinkedIn',on:false,v:''},{ic:'💬',n:'KakaoTalk',on:true,v:'워크스마트채널'}].map(s=>`
+        <div class="sns-row"><span class="sns-ic">${s.ic}</span><span class="sns-name">${s.n}</span><span class="sns-val">${s.v||'미연결'}</span><span class="${s.on?'sns-on':'sns-off'}">${s.on?'연결됨':'미연결'}</span></div>`).join('')}
+      <button class="btn btn-pu" style="margin-top:14px" onclick="toast('저장됐어요! ✓')">저장하기</button>`;
+  }
+  body.scrollTop=0;
+}
+
+function rvHtml(r,full){
+  const isNew=newIds.has(r.id);
+  const dt=r.created_at?new Date(r.created_at).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}):r.date||'';
+  return`<div class="rv-card${isNew?' new-rv':''}">
+    <div class="rvc-top"><div><div class="rvc-name">${r.name||'익명'}${isNew?'<span class="new-badge">NEW</span>':''} <span style="font-size:11px;color:var(--ink3);font-weight:400">${r.org||''}</span></div><div class="rvc-org">${r.lecture||'강의'} · ${dt}</div></div><span class="rvc-stars">${'★'.repeat(r.rating||0)}</span></div>
+    <div class="rvc-text">${r.good||''}</div>
+    ${full&&(r.bad||r.more)?`<div class="rvc-boxes">
+      ${r.bad?`<div class="rvc-box" style="background:var(--acl)"><div class="rvc-bl" style="color:var(--ac)">😅 아쉬운 점</div><div class="rvc-bt">${r.bad}</div></div>`:''}
+      ${r.more?`<div class="rvc-box" style="background:var(--pul)"><div class="rvc-bl" style="color:var(--pu)">📚 더 배우고 싶은 점</div><div class="rvc-bt">${r.more}</div></div>`:''}
+    </div>`:''}
+  </div>`;
+}
+
+function schedHtml(s,up){
+  const day=s.date?s.date.slice(8):'?';const mon=s.date?s.date.slice(5,7)+'월':'';
+  return`<div class="sched-card${up?' upcoming':''}">
+    <div class="sd-date"><div class="sd-day">${day}</div><div class="sd-mon">${mon}</div></div>
+    <div class="sd-info"><div class="sd-title">${s.title}</div><div class="sd-meta">${s.org||'기관 미정'} · ${s.time||''} · ${s.n||0}명</div></div>
+    <button class="sd-badge ${up?'up':'dn'}" onclick="${up?`switchTab('qr',null);setBnav('qr')`:`switchTab('reviews',null);setBnav('reviews')`}">${up?'QR 생성':'후기 보기'}</button>
+  </div>`;
+}
+
+function filterRv(lec,btn){
+  document.querySelectorAll('[onclick*="filterRv"]').forEach(b=>{b.style.background='var(--bg)';b.style.color='var(--ink3)';});
+  btn.style.background='var(--ink)';btn.style.color='#fff';
+  const list=lec==='전체'?allRv:allRv.filter(r=>r.lecture===lec);
+  document.getElementById('rv-list').innerHTML=list.length?list.map(r=>rvHtml(r,true)).join(''):`<div class="empty-state"><div class="es-icon">💬</div><div class="es-title">해당 강의의 후기가 없어요</div></div>`;
+}
+
+// ── QR ──
+function drawQR(){
+  const el=document.getElementById('qr-g');if(!el)return;
+  const col=qrCol,corners=[0,1,2,7,8,9,14,15,16,6,13,20,32,33,34,39,40,41,46,47,48,38,45,42];
+  const seed=col.charCodeAt(1)*37;
+  el.innerHTML=Array.from({length:49},(_,i)=>{const c=corners.includes(i),f=!c&&((i*seed+i*13)%100>44);return`<div class="qr-c" style="background:${c||f?col:'transparent'}"></div>`;}).join('');
+}
+function selLec(el,meta){
+  document.querySelectorAll('.lec-option').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  const m=document.getElementById('qr-meta');if(m)m.textContent=meta;
+}
+function setQrCol(col,el){
+  qrCol=col;
+  document.querySelectorAll('.c-pick').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');drawQR();
+}
+function copyLink(){navigator.clipboard.writeText(location.href).then(()=>toast('링크가 복사됐어요!')).catch(()=>toast('링크: '+location.href));}
+
+// ── ADD LECTURE ──
+async function addLecture(){
+  const title=document.getElementById('ml-title').value.trim();
+  const date=document.getElementById('ml-date').value;
+  if(!title||!date){toast('강의 주제와 날짜는 필수예요');return;}
+  const btn=document.getElementById('ml-btn');
+  btn.textContent='저장 중...';btn.disabled=true;
+  try{
+    await insertSc({title,date,time:document.getElementById('ml-time').value,org:document.getElementById('ml-org').value.trim(),status:'예정',n:parseInt(document.getElementById('ml-n').value)||0});
+    closeModal('m-lecture');toast('강의가 등록됐어요! 🎉');
+    switchTab('schedule',null);setBnav('schedule');
+    ['ml-title','ml-date','ml-time','ml-org','ml-n'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  }catch(e){toast('오류: '+e.message);}
+  finally{btn.textContent='등록하기';btn.disabled=false;}
+}
+
+// ── REVIEW FLOW ──
+let star=0;
+const starHints=['','별로였어요 😞','아쉬웠어요 😕','보통이에요 😐','좋았어요 😊','최고였어요! 🎉'];
+function gotoStep(n){
+  [1,2,3].forEach(i=>{const el=document.getElementById('rs'+i);if(el)el.classList.toggle('hidden',i!==n);});
+  const labels=['','강사 소개 확인','후기 작성','완료!'];
+  const fills=['','33%','66%','100%'];
+  document.getElementById('step-lbl').textContent=labels[n];
+  document.getElementById('step-cnt').textContent=n+' / 3';
+  document.getElementById('step-fill').style.width=fills[n];
+  document.getElementById('step-dots').innerHTML=[1,2,3].map(i=>`<div class="sdot${i===n?' on':i<n?' done':''}"></div>`).join('');
+}
+function setStar(n){
+  star=n;
+  document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('on',i<n));
+  document.getElementById('star-hint').textContent=starHints[n];
+}
+async function submitReview(){
+  if(!star){toast('별점을 선택해주세요 ⭐');return;}
+  const good=document.getElementById('f-good').value.trim();
+  if(!good){toast('좋았던 점은 필수예요 ✍️');return;}
+  const btn=document.getElementById('submit-rv-btn');
+  btn.textContent='제출 중...';btn.disabled=true;
+  try{
+    await insertRv({
+      name:document.getElementById('f-name').value.trim()||'익명',
+      org:document.getElementById('f-org').value.trim()||'미입력',
+      lecture:'AI 활용 실무',rating:star,good,
+      bad:document.getElementById('f-bad').value.trim(),
+      more:document.getElementById('f-more').value.trim(),
+      email:document.getElementById('f-email').value.trim(),
+    });
+    gotoStep(3);
+    ['f-name','f-org','f-good','f-bad','f-more','f-email'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    star=0;document.querySelectorAll('.star').forEach(s=>s.classList.remove('on'));
+    document.getElementById('star-hint').textContent='별을 눌러 평점을 남겨주세요';
+  }catch(e){toast('제출 실패: '+e.message);}
+  finally{btn.textContent='후기 제출하기 →';btn.disabled=false;}
+}
+
+// ── INIT ──
+(async()=>{
+  await refreshStats();
+  switchTab('overview',null);
+  gotoStep(1);
+  setInterval(async()=>{
+    if(document.getElementById('v-dash').classList.contains('active'))await refreshStats();
+  },15000);
+})();
+</script>
+</body>
+</html>
