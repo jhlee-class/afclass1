@@ -324,6 +324,11 @@ textarea.f-inp{resize:none;line-height:1.6}
 .mat-link-type-btn{padding:7px 13px;border-radius:20px;border:1.5px solid var(--border2);background:var(--bg2);color:var(--ink3);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
 .mat-link-type-btn.sel{border-color:var(--pu);background:var(--pul);color:var(--pud)}
 
+/* ═══ 소속 유형 버튼 ═══ */
+.org-type-btn{background:var(--bg2);border:1.5px solid var(--border2);color:var(--ink2);font-family:inherit;cursor:pointer;transition:all .15s;font-weight:600}
+.org-type-btn:active{transform:scale(.95)}
+.org-type-btn.sel{background:var(--pul);border-color:var(--pu);color:var(--pud);font-weight:800}
+
 /* ═══ 강의 상세 패널 ═══ */
 .sc-detail-panel{position:fixed;inset:0;background:var(--bg);z-index:160;display:flex;flex-direction:column;max-width:390px;margin:0 auto}
 .sc-detail-panel.hidden{display:none}
@@ -919,7 +924,6 @@ async function submitReview(){
   if(btn){ btn.textContent='제출 중...'; btn.disabled=true; }
   const d={
     lecture: _lecTitle,
-    lecture_title: _lecTitle,
     rating: _rating,
     org_type: _orgType,
     name: document.getElementById('f-name')?.value.trim()||'',
@@ -928,7 +932,6 @@ async function submitReview(){
     bad:  document.getElementById('f-bad')?.value.trim()||'',
     more: document.getElementById('f-more')?.value.trim()||'',
     email:document.getElementById('f-email')?.value.trim()||'',
-    date: _lecDate,
     hidden: false
   };
   try{
